@@ -1,10 +1,4 @@
-import { ComponentExample } from "@/components/component-example";
-import { Example } from "@/components/example";
-
+import { redirect } from 'next/navigation'
 export default function Page() {
-    return <>
-        <Example title="hello world">
-            <ComponentExample />
-        </Example>
-    </>;
+    redirect('/Channel/list')
 }
