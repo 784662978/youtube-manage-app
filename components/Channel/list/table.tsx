@@ -76,6 +76,7 @@ export type Payment = {
   email: string
 }
 
+// 定义表格列
 export const columns: ColumnDef<Payment>[] = [
   {
     id: "select",
