@@ -28,7 +28,7 @@ export default async function SidebarLayout({
             <AnimatedThemeToggler />
           </div>
         </header>
-        <main className="w-full">{children}</main>
+        <main className="w-full px-4">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )
