@@ -6,6 +6,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 
 export default async function SidebarLayout({
     children,
@@ -23,6 +24,9 @@ export default async function SidebarLayout({
             className="mr-2 data-[orientation=vertical]:h-4"
           />
           <DynamicBreadcrumb />
+          <div className="flex items-center justify-end flex-1">
+            <AnimatedThemeToggler />
+          </div>
         </header>
         <main className="w-full">{children}</main>
       </SidebarInset>

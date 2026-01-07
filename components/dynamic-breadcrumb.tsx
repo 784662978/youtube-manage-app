@@ -70,15 +70,15 @@ export function DynamicBreadcrumb() {
     const remainingPath = cleanPathname.slice(matchedUrlLength)
     const segments = remainingPath.split("/").filter(s => s !== "")
     
-    let currentUrl = cleanPathname.slice(0, matchedUrlLength)
+    const currentUrl = cleanPathname.slice(0, matchedUrlLength)
     
     dynamicItems = segments.map(segment => {
       // 确保路径拼接正确
       const separator = currentUrl.endsWith("/") ? "" : "/"
-      currentUrl += `${separator}${segment}`
+      const newUrl = currentUrl + `${separator}${segment}`
       return {
-        title: formatSegment(segment),
-        url: currentUrl
+        title: segment,
+        url: newUrl
       }
     })
 
@@ -113,6 +113,7 @@ export function DynamicBreadcrumb() {
             {!item.isLast && <BreadcrumbSeparator className="hidden md:block" />}
           </React.Fragment>
         ))}
+        
       </BreadcrumbList>
     </Breadcrumb>
   )
