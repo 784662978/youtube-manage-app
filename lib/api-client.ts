@@ -29,8 +29,6 @@ class ApiClient {
     
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "X-Timestamp": Date.now().toString(),
-      "X-Nonce": Math.random().toString(36).substring(7),
       ...config.headers,
     };
 
@@ -116,6 +114,18 @@ class ApiClient {
       body: JSON.stringify(body),
       headers,
     });
+  }
+
+  public put<T>(endpoint: string, body: any, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers,
+    });
+  }
+
+  public delete<T>(endpoint: string, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, { method: "DELETE", headers });
   }
 }
 

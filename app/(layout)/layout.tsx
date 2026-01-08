@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
+import { LogoutButton } from '@/components/logout-button'
 
 export default async function SidebarLayout({
     children,
@@ -24,8 +25,9 @@ export default async function SidebarLayout({
             className="mr-2 data-[orientation=vertical]:h-4"
           />
           <DynamicBreadcrumb />
-          <div className="flex items-center justify-end flex-1">
+          <div className="flex items-center justify-end flex-1 gap-2">
             <AnimatedThemeToggler />
+            <LogoutButton />
           </div>
         </header>
         <main className="w-full px-4">{children}</main>

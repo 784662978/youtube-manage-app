@@ -4,6 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
+import { List, Languages } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -26,14 +27,16 @@ export const data = {
       items: [
         {
           title: "频道列表",
-          url: "/Channel/list", 
+          url: "/Channel/list",
+          icon: List,
           isActive: true,
         },
         {
-            title: "频道语言",
-            url: "/Channel/language",
-            isActive: false,
-          },
+          title: "频道语言",
+          url: "/Channel/language",
+          icon: Languages,
+          isActive: false,
+        },
       ],
     },
   ],
@@ -45,6 +48,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
+        <SidebarGroupLabel>
+          <div className="flex items-center">
+            <span>Youtube 管理系统</span>
+          </div>
+        </SidebarGroupLabel>
       </SidebarHeader>
       <SidebarContent>
         {/* We create a SidebarGroup for each parent. */}
@@ -58,7 +66,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   return (
                     <SidebarMenuItem key={subItem.title}>
                       <SidebarMenuButton asChild isActive={isActive}>
-                        <Link href={subItem.url}>{subItem.title}</Link>
+                        <Link href={subItem.url}>
+                          {subItem.icon && <subItem.icon className="mr-2" />}
+                          {subItem.title}
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )

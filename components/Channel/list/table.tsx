@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { apiClient } from "@/lib/api-client"
 import {
   flexRender,
   getCoreRowModel,
@@ -13,19 +14,42 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react"
+import { ChevronDown, MoreHorizontal, Loader, Plus, SquarePen, Trash, KeyRound, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -35,147 +59,286 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Notification, NotificationType } from "@/components/ui/notification"
 
-const data: Payment[] = [
-  {
-    id: "m5gr84i9",
-    amount: 316,
-    status: "success",
-    email: "ken99@example.com",
-  },
-  {
-    id: "3u1reuv4",
-    amount: 242,
-    status: "success",
-    email: "Abe45@example.com",
-  },
-  {
-    id: "derv1ws0",
-    amount: 837,
-    status: "processing",
-    email: "Monserrat44@example.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    status: "success",
-    email: "Silas22@example.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    status: "failed",
-    email: "carmella@example.com",
-  },
-]
-
+// 定义表格数据类型
 export type Payment = {
-  id: string
-  amount: number
-  status: "pending" | "processing" | "success" | "failed"
-  email: string
+  id: number,
+  user_id: number,
+  name: string,
+  description: string,
+  auth_status: number,
+  channel_id: string,
+  channel_title: string,
+  channel_country: string,
+  channel_published_at: string,
+  created_at: string
 }
 
-// 定义表格列
-export const columns: ColumnDef<Payment>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <div className="capitalize">{row.getValue("status")}</div>
-    ),
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown />
-        </Button>
-      )
-    },
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
-  },
-  {
-    accessorKey: "amount",
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"))
-
-      // Format the amount as a dollar amount
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount)
-
-      return <div className="text-right font-medium">{formatted}</div>
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const payment = row.original
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
-            >
-              Copy payment ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
-  },
-]
-
 export function DataTableDemo() {
+  const [data, setData] = React.useState<Payment[]>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+  const [loading, setLoading] = React.useState(true)
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+
+  // Notification State
+  const [notification, setNotification] = React.useState<{
+    message: string
+    type: NotificationType
+    isVisible: boolean
+  }>({ message: "", type: "success", isVisible: false })
+
+  const showNotification = (message: string, type: NotificationType = "success") => {
+    setNotification({ message, type, isVisible: true })
+  }
+
+  // Edit State
+  const [isAdd, setIsAdd] = React.useState(true);
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [currentProject, setCurrentProject] = React.useState<{
+    id?: number,
+    name: string,
+    description: string
+  } | null>(null)
+  const [isSaving, setIsSaving] = React.useState(false)
+
+  // Delete State
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [projectToDelete, setProjectToDelete] = React.useState<Payment | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+
+  // Search State
+  const [idFilter, setIdFilter] = React.useState("")
+
+  // Sync State
+  const [syncingId, setSyncingId] = React.useState<number | null>(null)
+
+  const handleSync = async (id: number) => {
+    setSyncingId(id)
+    try {
+      await apiClient.post(`/dataSync/sync-all/${id}`, {})
+      showNotification("同步成功", "success")
+    } catch (error) {
+      console.error("Sync failed", error)
+      showNotification("同步失败", "error")
+    } finally {
+      setSyncingId(null)
+    }
+  }
+
+  const columnTranslations: { [key: string]: string } = {
+    id: "ID",
+    name: "频道名称",
+    description: "频道描述",
+    created_at: "创建时间",
+    actions: "操作",
+  }
+
+  // Debounce Search
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      // Ensure we only filter if table is ready
+      // Note: table instance is created below, so this effect should be fine as it depends on [idFilter]
+      // But we can't access 'table' variable here because it's defined below.
+      // We need to move table definition up or use a ref?
+      // Actually, standard way is to just pass state to useReactTable.
+      // But we are using 'table.getColumn' which requires table instance.
+      // Correct way: The 'table' instance is derived from state.
+      // We can't access 'table' inside an effect that is defined before 'table'.
+      // We should move this effect AFTER table definition.
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [idFilter])
+
+  // Fetch Data
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const { response } = await apiClient.get<{ response: Payment[] }>("/project")
+      setData(response)
+    } catch (error) {
+      console.error("Failed to fetch projects", error)
+      showNotification("获取项目列表失败", "error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    fetchData()
+  }, [])
+
+  // Handle Google Authorization
+  const handleAuthorize = async (id: number) => {
+    try {
+      const res = await apiClient.get<{ response: string }>(`/googleAuth/authorize/${id}`)
+      if (res && res.response) {
+        const authUrl = res.response
+        const width = 600
+        const height = 700
+        const left = window.screen.width / 2 - width / 2
+        const top = window.screen.height / 2 - height / 2
+
+        const popup = window.open(authUrl, "Google Auth", `width=${width},height=${height},left=${left},top=${top}`)
+
+        // Start Polling for status change
+        const pollInterval = setInterval(async () => {
+          if (popup?.closed) {
+            clearInterval(pollInterval)
+            return
+          }
+
+          try {
+            // Silently fetch data to check status
+            const { response } = await apiClient.get<{ response: Payment[] }>("/project")
+            const project = response.find(p => p.id === id)
+
+            // Assuming auth_status != 0 means authorized (e.g. 1)
+            if (project && project.auth_status !== 0) {
+              clearInterval(pollInterval)
+              popup?.close()
+              setData(response) // Update UI with new data
+              showNotification("授权成功！", "success")
+            }
+          } catch (err) {
+            // Ignore polling errors to avoid spamming console
+          }
+        }, 2000)
+
+        // Stop polling after 2 minutes
+        setTimeout(() => {
+          clearInterval(pollInterval)
+        }, 120000)
+
+      } else {
+        showNotification("无法获取授权链接", "error")
+      }
+    } catch (error) {
+      console.error("Authorization error", error)
+      showNotification("授权请求失败", "error")
+    }
+  }
+
+  // Columns
+  const columns: ColumnDef<Payment>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+      filterFn: 'includesString',
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue("id")}</div>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "频道名称",
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-[150px] truncate capitalize cursor-pointer">
+              {row.getValue("name")}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{row.getValue("name")}</p>
+          </TooltipContent>
+        </Tooltip>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: "频道描述",
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-[200px] truncate capitalize cursor-pointer">
+              {row.getValue("description")}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[300px] break-words">
+            <p>{row.getValue("description")}</p>
+          </TooltipContent>
+        </Tooltip>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "创建时间",
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-[150px] truncate capitalize cursor-pointer">
+              {row.getValue("created_at")}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{row.getValue("created_at")}</p>
+          </TooltipContent>
+        </Tooltip>
+      ),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const payment = row.original
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>数据操作</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => {
+                setCurrentProject(payment)
+                setIsAdd(false)
+                setEditOpen(true)
+              }}>
+                <SquarePen className="mr-2 h-4 w-4" />编辑
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setProjectToDelete(payment)
+                setDeleteOpen(true)
+              }}>
+                <Trash className="mr-2 h-4 w-4" />删除
+              </DropdownMenuItem>
+              <DropdownMenuLabel>频道操作</DropdownMenuLabel>
+              {
+                payment.auth_status === 0 &&
+                <DropdownMenuItem onClick={() => handleAuthorize(payment.id)}>
+                  <KeyRound className="mr-2 h-4 w-4" />授权频道
+                </DropdownMenuItem>
+              }
+              {
+                payment.auth_status !== 0 &&
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleSync(payment.id)
+                  }}
+                  disabled={syncingId === payment.id}
+                >
+                  {syncingId === payment.id ? (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  同步内容
+                </DropdownMenuItem>
+              }
+
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
 
   const table = useReactTable({
     data,
@@ -196,21 +359,85 @@ export function DataTableDemo() {
     },
   })
 
+  // Move debounce effect here to access 'table'
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      table.getColumn("id")?.setFilterValue(idFilter)
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [idFilter, table])
+
+
+  // Handlers
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentProject) return
+
+    setIsSaving(true)
+
+    try {
+      if (isAdd) {
+        await apiClient.post(`/project`, {
+          name: currentProject.name,
+          description: currentProject.description
+        })
+        showNotification("创建成功", "success")
+      } else {
+        await apiClient.put(`/project/${currentProject.id}`, {
+          name: currentProject.name,
+          description: currentProject.description
+        })
+        showNotification("更新成功", "success")
+      }
+      setEditOpen(false)
+      fetchData()
+    } catch (error) {
+      console.error("Update failed", error)
+      showNotification("操作失败", "error")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!projectToDelete) return
+    setIsDeleting(true)
+    try {
+      await apiClient.delete(`/project/${projectToDelete.id}`)
+      setDeleteOpen(false)
+      fetchData()
+      showNotification("删除成功", "success")
+    } catch (error) {
+      console.error("Delete failed", error)
+      showNotification("删除失败", "error")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+      <Notification
+        message={notification.message}
+        type={notification.type}
+        isVisible={notification.isVisible}
+        onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
+      />
+
+      <div className="flex items-center py-4 gap-2">
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="查询ID"
+            value={idFilter}
+            onChange={(event) => setIdFilter(event.target.value)}
+            className="max-w-sm w-[200px]"
+          />
+        </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown />
+              列 <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -227,12 +454,23 @@ export function DataTableDemo() {
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {columnTranslations[column.id] || column.id}
                   </DropdownMenuCheckboxItem>
                 )
               })}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button className="ml-2" onClick={() => {
+          setIsAdd(true);
+          setEditOpen(true)
+          setCurrentProject({
+            name: "",
+            description: ""
+          })
+        }}>
+          <Plus />创建频道
+        </Button>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -245,9 +483,9 @@ export function DataTableDemo() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   )
                 })}
@@ -277,37 +515,83 @@ export function DataTableDemo() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {loading ? (
+                    <div className="flex justify-center items-center">
+                      <Loader className="animate-spin" />
+                    </div>
+                  ) : "No results."}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{isAdd ? "创建频道" : "编辑频道"}</SheetTitle>
+            <SheetDescription>
+              {isAdd ? "填写以下信息以创建新频道。" : "修改频道信息并保存。"}
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 px-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">频道名称</Label>
+              <Input
+                id="name"
+                value={currentProject?.name || ""}
+                onChange={(e) =>
+                  setCurrentProject((prev) =>
+                    prev ? { ...prev, name: e.target.value } : null
+                  )
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">频道描述</Label>
+              <Textarea
+                id="description"
+                value={currentProject?.description || ""}
+                onChange={(e) =>
+                  setCurrentProject((prev) =>
+                    prev ? { ...prev, description: e.target.value } : null
+                  )
+                }
+              />
+            </div>
+            <SheetFooter>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                保存
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除频道 {projectToDelete?.name}。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
