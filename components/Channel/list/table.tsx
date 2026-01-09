@@ -43,6 +43,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -73,6 +82,11 @@ export type Payment = {
   channel_country: string,
   channel_published_at: string,
   created_at: string
+}
+
+export type Language = {
+  code: string
+  name: string
 }
 
 export function DataTableDemo() {
@@ -125,6 +139,84 @@ export function DataTableDemo() {
       showNotification("同步失败", "error")
     } finally {
       setSyncingId(null)
+    }
+  }
+
+  // Add Language State & Logic
+  const [addLangOpen, setAddLangOpen] = React.useState(false)
+  const [currentVideoId, setCurrentVideoId] = React.useState<number | null>(null)
+  const [languages, setLanguages] = React.useState<Language[]>([])
+  const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>([])
+  const [langTitle, setLangTitle] = React.useState("")
+  const [langDescription, setLangDescription] = React.useState("")
+  const [isLangSubmitting, setIsLangSubmitting] = React.useState(false)
+
+  const fetchLanguages = async () => {
+    try {
+      const { response } = await apiClient.get<{ response: Language[] }>("/lang")
+      setLanguages(response)
+    } catch (error) {
+      console.error("Failed to fetch languages", error)
+      showNotification("获取语言列表失败", "error")
+    }
+  }
+
+  const handleOpenAddLang = (videoId: number) => {
+    setCurrentVideoId(videoId)
+    setAddLangOpen(true)
+    setSelectedLanguages([])
+    setLangTitle("")
+    setLangDescription("")
+    fetchLanguages()
+  }
+
+  const handleLangSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentVideoId) return
+    if (selectedLanguages.length === 0) {
+      showNotification("请至少选择一种语言", "error")
+      return
+    }
+    if (!langTitle.trim()) {
+      showNotification("标题不能为空", "error")
+      return
+    }
+
+    setIsLangSubmitting(true)
+    try {
+      const payload = {
+        langs: selectedLanguages.map(langCode => ({
+          lang: langCode,
+          title: langTitle,
+          description: langDescription
+        }))
+      }
+
+      await apiClient.post(`/video/add-lang/${currentVideoId}`, payload)
+
+      showNotification("添加语言成功", "success")
+      setAddLangOpen(false)
+    } catch (error: any) {
+      console.error("Add language failed", error)
+      showNotification(error.response?.data?.msg || "添加语言失败", "error")
+    } finally {
+      setIsLangSubmitting(false)
+    }
+  }
+
+  const toggleLanguage = (langCode: string) => {
+    setSelectedLanguages(prev =>
+      prev.includes(langCode)
+        ? prev.filter(c => c !== langCode)
+        : [...prev, langCode]
+    )
+  }
+
+  const toggleAllLanguages = (checked: boolean) => {
+    if (checked) {
+      setSelectedLanguages(languages.map(l => l.code))
+    } else {
+      setSelectedLanguages([])
     }
   }
 
@@ -332,7 +424,7 @@ export function DataTableDemo() {
                     )}
                     同步内容
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAddLang(payment.id)}>
                     <Languages className="mr-2 h-4 w-4" />添加语言
                   </DropdownMenuItem>
                 </>
@@ -597,6 +689,80 @@ export function DataTableDemo() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={addLangOpen} onOpenChange={setAddLangOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>添加视频语言</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleLangSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="video-id">频道视频ID <span className="text-red-500">*</span></Label>
+              <Input
+                id="video-id"
+                value={currentVideoId}
+                onChange={(e) => setCurrentVideoId(e.target.value)}
+                placeholder="输入视频ID"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>选择语言</Label>
+              <div className="flex items-center space-x-2 mb-2">
+                <Checkbox
+                  id="select-all"
+                  checked={languages.length > 0 && selectedLanguages.length === languages.length}
+                  onCheckedChange={(checked) => toggleAllLanguages(!!checked)}
+                />
+                <Label htmlFor="select-all" className="cursor-pointer">全选 / 取消全选</Label>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 border p-4 rounded-md max-h-[200px] overflow-y-auto">
+                {languages.map((lang) => (
+                  <div key={lang.code} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`lang-${lang.code}`}
+                      checked={selectedLanguages.includes(lang.code)}
+                      onCheckedChange={() => toggleLanguage(lang.code)}
+                    />
+                    <Label htmlFor={`lang-${lang.code}`} className="cursor-pointer text-sm">
+                      {lang.name} ({lang.code})
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lang-title">标题 <span className="text-red-500">*</span></Label>
+              <Input
+                id="lang-title"
+                value={langTitle}
+                onChange={(e) => setLangTitle(e.target.value)}
+                placeholder="输入视频标题"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lang-desc">详情描述</Label>
+              <Textarea
+                id="lang-desc"
+                value={langDescription}
+                onChange={(e) => setLangDescription(e.target.value)}
+                placeholder="输入详情描述（可选）"
+                className="h-24"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="submit" disabled={isLangSubmitting}>
+                {isLangSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                提交
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
