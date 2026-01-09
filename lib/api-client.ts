@@ -1,7 +1,7 @@
 
 import { refreshTokenAction } from "@/app/actions/token";
 
-const BASE_URL = "https://data.aipopshort.com/v1/api";
+const BASE_URL = "https://dataapi.aipopshort.com/v1/api";
 
 interface ApiConfig extends RequestInit {
   headers?: Record<string, string>;

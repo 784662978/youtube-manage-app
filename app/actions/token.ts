@@ -11,7 +11,7 @@ export async function refreshTokenAction(userId: number) {
       return { success: false, message: "No refresh token found" };
     }
 
-    const response = await fetch("https://data.aipopshort.com/v1/api/auth/refresh-token", {
+    const response = await fetch("https://dataapi.aipopshort.com/v1/api/auth/refresh-token", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",

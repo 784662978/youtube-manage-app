@@ -90,7 +90,7 @@ export async function refreshTokenAction(userId: number) {
     // 调用刷新 Token 接口
     // 注意：这里我们使用 apiClient 进行调用，但要确保不会无限循环调用刷新
     // 实际接口调用可以不需要拦截器，或者我们直接用 fetch 避免副作用
-    const response = await fetch("https://data.aipopshort.com/v1/api/auth/refresh-token", {
+    const response = await fetch("https://dataapi.aipopshort.com/v1/api/auth/refresh-token", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
