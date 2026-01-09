@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import dayjs from "dayjs"
 import { apiClient } from "@/lib/api-client"
 import {
   flexRender,
@@ -362,11 +363,11 @@ export function DataTableDemo() {
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="w-[150px] truncate capitalize cursor-pointer">
-              {row.getValue("created_at")}
+              {dayjs(row.getValue("created_at")).format("YYYY-MM-DD HH:mm:ss")}
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{row.getValue("created_at")}</p>
+            <p>{dayjs(row.getValue("created_at")).format("YYYY-MM-DD HH:mm:ss")}</p>
           </TooltipContent>
         </Tooltip>
       ),
