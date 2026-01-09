@@ -14,7 +14,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { ChevronDown, MoreHorizontal, Loader, Plus, SquarePen, Trash, KeyRound, RefreshCw } from "lucide-react"
+import { ChevronDown, MoreHorizontal, Loader, Plus, SquarePen, Trash, KeyRound, RefreshCw, Languages } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -317,20 +317,25 @@ export function DataTableDemo() {
               }
               {
                 payment.auth_status !== 0 &&
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleSync(payment.id)
-                  }}
-                  disabled={syncingId === payment.id}
-                >
-                  {syncingId === payment.id ? (
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                  )}
-                  同步内容
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleSync(payment.id)
+                    }}
+                    disabled={syncingId === payment.id}
+                  >
+                    {syncingId === payment.id ? (
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    同步内容
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Languages className="mr-2 h-4 w-4" />添加语言
+                  </DropdownMenuItem>
+                </>
               }
 
             </DropdownMenuContent>

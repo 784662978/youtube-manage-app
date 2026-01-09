@@ -4,7 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
-import { List, Languages } from 'lucide-react'
+import { List } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -30,13 +30,7 @@ export const data = {
           url: "/Channel/list",
           icon: List,
           isActive: true,
-        },
-        {
-          title: "频道语言",
-          url: "/Channel/language",
-          icon: Languages,
-          isActive: false,
-        },
+        }
       ],
     },
   ],
