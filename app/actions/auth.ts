@@ -1,7 +1,5 @@
-"use server";
 
 import { apiClient } from "@/lib/api-client";
-import { cookies } from "next/headers";
 
 interface LoginResponseData {
   user_id: number;
@@ -22,6 +20,7 @@ export type LoginState = {
   data?: {
     user_id: number;
     jwt_token: string;
+    refresh_token?: string;
   };
 };
 
@@ -47,20 +46,16 @@ export async function loginAction(
     if (result.success && result.response) {
       const { refresh_token, jwt_token, user_id } = result.response;
 
-      const cookieStore = await cookies();
-      cookieStore.set("refresh_token", refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60, // 7 days
-      });
-
+      // In static export, we cannot set cookies on server side.
+      // We return the tokens to the client to handle storage (e.g. localStorage)
+      
       return {
         success: true,
         message: "登录成功",
         data: {
           user_id,
           jwt_token,
+          refresh_token
         },
       };
     } else {
@@ -78,18 +73,16 @@ export async function loginAction(
   }
 }
 
-export async function refreshTokenAction(userId: number) {
+// Client-side compatible refresh token action
+export async function refreshTokenAction(userId: number, currentRefreshToken?: string) {
   try {
-    const cookieStore = await cookies();
-    const refreshToken = cookieStore.get("refresh_token")?.value;
+    const refreshToken = currentRefreshToken;
 
     if (!refreshToken) {
-      return { success: false, message: "No refresh token found" };
+      return { success: false, message: "No refresh token provided" };
     }
 
     // 调用刷新 Token 接口
-    // 注意：这里我们使用 apiClient 进行调用，但要确保不会无限循环调用刷新
-    // 实际接口调用可以不需要拦截器，或者我们直接用 fetch 避免副作用
     const response = await fetch("https://dataapi.aipopshort.com/v1/api/auth/refresh-token", {
         method: "POST",
         headers: {
@@ -112,17 +105,7 @@ export async function refreshTokenAction(userId: number) {
     if (data.success && data.response) {
         const { jwt_token, refresh_token: newRefreshToken } = data.response;
         
-        // 更新 Cookie 中的 refresh_token (如果服务端返回了新的)
-        if (newRefreshToken) {
-            cookieStore.set("refresh_token", newRefreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                path: "/",
-                maxAge: 7 * 24 * 60 * 60,
-            });
-        }
-        
-        return { success: true, jwt_token };
+        return { success: true, jwt_token, refresh_token: newRefreshToken };
     }
     
     return { success: false };

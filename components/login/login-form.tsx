@@ -38,6 +38,9 @@ export function LoginForm({
       try {
         localStorage.setItem("jwt_token", state.data.jwt_token)
         localStorage.setItem("user_id", state.data.user_id.toString())
+        if (state.data.refresh_token) {
+          localStorage.setItem("refresh_token", state.data.refresh_token)
+        }
       } catch (e) {
         console.error("Failed to save token to localStorage", e)
       }

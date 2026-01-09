@@ -6,7 +6,8 @@
     "dev": "next dev -p 5555",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "export": "node scripts/export-static.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

@@ -144,7 +144,7 @@ export function DataTableDemo() {
 
   // Add Language State & Logic
   const [addLangOpen, setAddLangOpen] = React.useState(false)
-  const [currentVideoId, setCurrentVideoId] = React.useState<number | null>(null)
+  const [currentVideoId, setCurrentVideoId] = React.useState<string | number | null>(null)
   const [languages, setLanguages] = React.useState<Language[]>([])
   const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>([])
   const [langTitle, setLangTitle] = React.useState("")
@@ -700,7 +700,7 @@ export function DataTableDemo() {
               <Label htmlFor="video-id">频道视频ID <span className="text-red-500">*</span></Label>
               <Input
                 id="video-id"
-                value={currentVideoId}
+                value={currentVideoId ?? ''}
                 onChange={(e) => setCurrentVideoId(e.target.value)}
                 placeholder="输入视频ID"
                 required

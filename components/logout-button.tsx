@@ -11,6 +11,7 @@ export function LogoutButton() {
     // Clear local storage
     localStorage.removeItem("jwt_token")
     localStorage.removeItem("user_id")
+    localStorage.removeItem("refresh_token")
     
     // Redirect to login
     router.push("/login")

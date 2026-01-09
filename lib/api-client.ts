@@ -47,12 +47,16 @@ class ApiClient {
              if (!this.isRefreshing) {
                 this.isRefreshing = true;
                 const userId = localStorage.getItem("user_id");
+                const refreshToken = localStorage.getItem("refresh_token") || undefined;
                 
                 if (userId) {
                     try {
-                        const refreshResult = await refreshTokenAction(parseInt(userId));
+                        const refreshResult = await refreshTokenAction(parseInt(userId), refreshToken);
                         if (refreshResult.success && refreshResult.jwt_token) {
                             localStorage.setItem("jwt_token", refreshResult.jwt_token);
+                            if (refreshResult.refresh_token) {
+                                localStorage.setItem("refresh_token", refreshResult.refresh_token);
+                            }
                             this.isRefreshing = false;
                             this.onRefreshed(refreshResult.jwt_token);
                             // Retry original request

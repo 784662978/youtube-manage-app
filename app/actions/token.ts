@@ -1,14 +1,8 @@
-"use server";
 
-import { cookies } from "next/headers";
-
-export async function refreshTokenAction(userId: number) {
+export async function refreshTokenAction(userId: number, refreshToken?: string) {
   try {
-    const cookieStore = await cookies();
-    const refreshToken = cookieStore.get("refresh_token")?.value;
-
     if (!refreshToken) {
-      return { success: false, message: "No refresh token found" };
+      return { success: false, message: "No refresh token provided" };
     }
 
     const response = await fetch("https://dataapi.aipopshort.com/v1/api/auth/refresh-token", {
@@ -34,16 +28,8 @@ export async function refreshTokenAction(userId: number) {
     if (data.success && data.response) {
         const { jwt_token, refresh_token: newRefreshToken } = data.response;
         
-        if (newRefreshToken) {
-            cookieStore.set("refresh_token", newRefreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                path: "/",
-                maxAge: 7 * 24 * 60 * 60,
-            });
-        }
-        
-        return { success: true, jwt_token };
+        // Return new tokens to client
+        return { success: true, jwt_token, refresh_token: newRefreshToken };
     }
     
     return { success: false };
