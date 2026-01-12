@@ -15,7 +15,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { ChevronDown, MoreHorizontal, Loader, Plus, SquarePen, Trash, KeyRound, RefreshCw, Languages } from "lucide-react"
+import { ChevronDown, MoreHorizontal, Loader, Plus, SquarePen, Trash, KeyRound, RefreshCw, Languages, Video } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -71,6 +71,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Notification, NotificationType } from "@/components/ui/notification"
+import { VideoListModal } from "./video-list-modal"
 
 // 定义表格数据类型
 export type Payment = {
@@ -153,6 +154,10 @@ export function DataTableDemo() {
   const [langDescription, setLangDescription] = React.useState("")
   const [isLangSubmitting, setIsLangSubmitting] = React.useState(false)
 
+  // Video List State
+  const [videoListOpen, setVideoListOpen] = React.useState(false)
+  const [currentChannelForVideo, setCurrentChannelForVideo] = React.useState<{id: number, name: string} | null>(null)
+
   const fetchLanguages = async () => {
     try {
       const { response } = await apiClient.get<{ response: Language[] }>("/lang")
@@ -227,6 +232,7 @@ export function DataTableDemo() {
     name: "频道名称",
     description: "频道描述",
     created_at: "创建时间",
+    auth_status: "授权状态",
     actions: "操作",
   }
 
@@ -417,6 +423,12 @@ export function DataTableDemo() {
                 <Trash className="mr-2 h-4 w-4" />删除
               </DropdownMenuItem>
               <DropdownMenuLabel>频道操作</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => {
+                setCurrentChannelForVideo({ id: payment.id, name: payment.name })
+                setVideoListOpen(true)
+              }}>
+                <Video className="mr-2 h-4 w-4" />查看视频
+              </DropdownMenuItem>
               {
                 payment.auth_status === 0 &&
                 <DropdownMenuItem onClick={() => handleAuthorize(payment.id)}>
@@ -779,6 +791,13 @@ export function DataTableDemo() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <VideoListModal 
+        isOpen={videoListOpen} 
+        onClose={() => setVideoListOpen(false)} 
+        channelId={currentChannelForVideo?.id ?? null}
+        channelName={currentChannelForVideo?.name ?? ""}
+      />
     </div>
   )
 }

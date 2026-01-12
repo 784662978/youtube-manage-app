@@ -108,8 +108,21 @@ class ApiClient {
     return doRequest(url, headers);
   }
 
-  public get<T>(endpoint: string, headers?: Record<string, string>) {
-    return this.request<T>(endpoint, { method: "GET", headers });
+  public get<T>(endpoint: string, params?: Record<string, any>, headers?: Record<string, string>) {
+    let url = endpoint;
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+          searchParams.append(key, String(params[key]));
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
+    }
+    return this.request<T>(url, { method: "GET", headers });
   }
 
   public post<T>(endpoint: string, body: any, headers?: Record<string, string>) {
