@@ -5,6 +5,8 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 const PUBLIC_PATHS = ["/login"];
 
+import { GlobalLoader } from "@/components/ui/global-loader";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Show nothing while checking authentication to prevent content flash
   // You could replace this with a global loading spinner
   if (!isAuthorized) {
-      return null; 
+      return <GlobalLoader />; 
   }
 
   return <>{children}</>;

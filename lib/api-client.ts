@@ -40,6 +40,7 @@ class ApiClient {
         const response = await fetch(currentUrl, {
             ...config,
             headers: currentHeaders,
+            cache: 'no-store', // Prevent browser caching, especially for Edge infinite loops
         });
 
         // Handle 401 Unauthorized
