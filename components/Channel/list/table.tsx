@@ -20,6 +20,7 @@ import { ChevronDown, MoreHorizontal, Loader, Plus, SquarePen, Trash, KeyRound, 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
   TooltipContent,
@@ -326,11 +327,11 @@ export function DataTableDemo() {
     },
     {
       accessorKey: "name",
-      header: "频道名称",
+      header: () => <div className="text-center">频道名称</div>,
       cell: ({ row }) => (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="w-[150px] truncate capitalize cursor-pointer">
+            <div className="truncate capitalize cursor-pointer text-center">
               {row.getValue("name")}
             </div>
           </TooltipTrigger>
@@ -342,11 +343,11 @@ export function DataTableDemo() {
     },
     {
       accessorKey: "description",
-      header: "频道描述",
+      header: () => <div className="text-center">频道描述</div>,
       cell: ({ row }) => (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="w-[200px] truncate capitalize cursor-pointer">
+            <div className="w-[200px] truncate capitalize cursor-pointer text-center mx-auto">
               {row.getValue("description")}
             </div>
           </TooltipTrigger>
@@ -358,11 +359,11 @@ export function DataTableDemo() {
     },
     {
       accessorKey: "created_at",
-      header: "创建时间",
+      header: () => <div className="text-center">创建时间</div>,
       cell: ({ row }) => (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="w-[150px] truncate capitalize cursor-pointer">
+            <div className="w-[150px] truncate capitalize cursor-pointer text-center mx-auto">
               {dayjs(row.getValue("created_at")).format("YYYY-MM-DD HH:mm:ss")}
             </div>
           </TooltipTrigger>
@@ -370,6 +371,20 @@ export function DataTableDemo() {
             <p>{dayjs(row.getValue("created_at")).format("YYYY-MM-DD HH:mm:ss")}</p>
           </TooltipContent>
         </Tooltip>
+      ),
+    },
+    // 授权状态
+    {
+      accessorKey: "auth_status",
+      header: "授权状态",
+      cell: ({ row }) => (
+        <div className="capitalize">
+          <Badge
+            variant={row.getValue("auth_status") === 0 ? "destructive" : "default"}
+          >
+            {row.getValue("auth_status") === 0 ? "未授权" : "已授权"}
+          </Badge> 
+        </div>
       ),
     },
     {
@@ -572,7 +587,7 @@ export function DataTableDemo() {
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -590,7 +605,7 @@ export function DataTableDemo() {
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
