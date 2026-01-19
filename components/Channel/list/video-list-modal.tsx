@@ -10,6 +10,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,8 +39,12 @@ import {
   ChevronLeft, 
   ChevronRight, 
   ChevronsLeft, 
-  ChevronsRight 
+  ChevronsRight,
+  Languages,
+  MoreHorizontal
 } from "lucide-react"
+import { Notification, NotificationType } from "@/components/ui/notification"
+import { LanguageSelectorModal, type Language } from "@/components/common/language-selector-modal"
 
 interface Video {
   id: number
@@ -73,6 +84,26 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
   
   // Jump to page state
   const [jumpPage, setJumpPage] = React.useState("")
+
+  // Language Modal State
+  const [addLangOpen, setAddLangOpen] = React.useState(false)
+  const [currentVideoId, setCurrentVideoId] = React.useState<string | null>(null)
+  const [languages, setLanguages] = React.useState<Language[]>([])
+  const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>([])
+  const [langTitle, setLangTitle] = React.useState("")
+  const [langDescription, setLangDescription] = React.useState("")
+  const [isLangSubmitting, setIsLangSubmitting] = React.useState(false)
+
+  // Notification State
+  const [notification, setNotification] = React.useState<{
+    message: string
+    type: NotificationType
+    isVisible: boolean
+  }>({ message: "", type: "success", isVisible: false })
+
+  const showNotification = (message: string, type: NotificationType = "success") => {
+    setNotification({ message, type, isVisible: true })
+  }
 
   const fetchVideos = React.useCallback(async (pageNum: number, size: number) => {
     if (!channelId) return
@@ -155,9 +186,69 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+  // Language Logic
+  const fetchLanguages = async () => {
+    try {
+      const { response } = await apiClient.get<{ response: Language[] }>("/lang")
+      setLanguages(response)
+    } catch (error) {
+      console.error("Failed to fetch languages", error)
+      showNotification("获取语言列表失败", "error")
+    }
+  }
+
+  const handleOpenAddLang = (videoId: string) => {
+    setCurrentVideoId(videoId)
+    setAddLangOpen(true)
+    setSelectedLanguages([])
+    setLangTitle("")
+    setLangDescription("")
+    fetchLanguages()
+  }
+
+  const handleLangSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentVideoId) return
+    if (selectedLanguages.length === 0) {
+      showNotification("请至少选择一种语言", "error")
+      return
+    }
+    if (!langTitle.trim()) {
+      showNotification("标题不能为空", "error")
+      return
+    }
+
+    setIsLangSubmitting(true)
+    try {
+      const payload = {
+        langs: selectedLanguages.map(langCode => ({
+          lang: langCode,
+          title: langTitle,
+          description: langDescription
+        }))
+      }
+
+      await apiClient.post(`/video/add-lang/${currentVideoId}`, payload)
+
+      showNotification("添加语言成功", "success")
+      setAddLangOpen(false)
+    } catch (error: any) {
+      console.error("Add language failed", error)
+      showNotification(error.response?.data?.msg || "添加语言失败", "error")
+    } finally {
+      setIsLangSubmitting(false)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[80%] h-[90vh] flex flex-col p-0 gap-0">
+        <Notification
+            message={notification.message}
+            type={notification.type}
+            isVisible={notification.isVisible}
+            onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
+        />
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>频道视频列表 - [{channelName}]</DialogTitle>
         </DialogHeader>
@@ -201,12 +292,13 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                   <TableHead>发布时间</TableHead>
                   <TableHead>时长</TableHead>
                   <TableHead>国家/地区</TableHead>
+                  <TableHead className="text-center">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-40 text-center">
+                    <TableCell colSpan={6} className="h-40 text-center">
                       <div className="flex justify-center items-center h-full">
                         <Loader className="animate-spin w-6 h-6 mr-2" />
                         加载中...
@@ -215,13 +307,13 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-40 text-center text-red-500">
+                    <TableCell colSpan={6} className="h-40 text-center text-red-500">
                       {error}
                     </TableCell>
                   </TableRow>
                 ) : videos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-40 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="h-40 text-center text-muted-foreground">
                       暂无数据
                     </TableCell>
                   </TableRow>
@@ -237,6 +329,22 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                       </TableCell>
                       <TableCell>{formatDuration(video.duration)}</TableCell>
                       <TableCell>{video.country}</TableCell>
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>操作</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleOpenAddLang(video.video_id)}>
+                              <Languages className="mr-2 h-4 w-4" />添加语言
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -329,6 +437,22 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                 </div>
             </div>
         </div>
+
+        <LanguageSelectorModal
+          open={addLangOpen}
+          onOpenChange={setAddLangOpen}
+          languages={languages}
+          selectedLanguages={selectedLanguages}
+          videoId={currentVideoId}
+          // Do not allow editing video ID here as it comes from the row
+          title={langTitle}
+          description={langDescription}
+          onSelectedLanguagesChange={setSelectedLanguages}
+          onTitleChange={setLangTitle}
+          onDescriptionChange={setLangDescription}
+          onSubmit={handleLangSubmit}
+          isSubmitting={isLangSubmitting}
+        />
       </DialogContent>
     </Dialog>
   )
