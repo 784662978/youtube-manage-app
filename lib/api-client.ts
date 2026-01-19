@@ -26,7 +26,13 @@ class ApiClient {
     
     // Get token from localStorage (client-side only)
     const token = typeof window !== "undefined" ? localStorage.getItem("jwt_token") : null;
-    
+
+    if (!token && !config.skipAuth && typeof window !== "undefined") {
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?redirect=${returnUrl}`;
+      throw new Error("Session expired");
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...config.headers,
@@ -42,7 +48,6 @@ class ApiClient {
             headers: currentHeaders,
             cache: 'no-store', // Prevent browser caching, especially for Edge infinite loops
         });
-
         // Handle 401 Unauthorized
         if (response.status === 401 && !config.skipAuth && typeof window !== "undefined") {
              if (!this.isRefreshing) {
@@ -109,7 +114,12 @@ class ApiClient {
     return doRequest(url, headers);
   }
 
-  public get<T>(endpoint: string, params?: Record<string, any>, headers?: Record<string, string>) {
+  public get<T>(
+    endpoint: string,
+    params?: Record<string, any>,
+    headers?: Record<string, string>,
+    config: ApiConfig = {}
+  ) {
     let url = endpoint;
     if (params) {
       const searchParams = new URLSearchParams();
@@ -123,27 +133,47 @@ class ApiClient {
         url += (url.includes('?') ? '&' : '?') + queryString;
       }
     }
-    return this.request<T>(url, { method: "GET", headers });
+    const mergedHeaders = { ...headers, ...config.headers };
+    return this.request<T>(url, { ...config, method: "GET", headers: mergedHeaders });
   }
 
-  public post<T>(endpoint: string, body: any, headers?: Record<string, string>) {
+  public post<T>(
+    endpoint: string,
+    body: any,
+    headers?: Record<string, string>,
+    config: ApiConfig = {}
+  ) {
+    const mergedHeaders = { ...headers, ...config.headers };
     return this.request<T>(endpoint, {
+      ...config,
       method: "POST",
       body: JSON.stringify(body),
-      headers,
+      headers: mergedHeaders,
     });
   }
 
-  public put<T>(endpoint: string, body: any, headers?: Record<string, string>) {
+  public put<T>(
+    endpoint: string,
+    body: any,
+    headers?: Record<string, string>,
+    config: ApiConfig = {}
+  ) {
+    const mergedHeaders = { ...headers, ...config.headers };
     return this.request<T>(endpoint, {
+      ...config,
       method: "PUT",
       body: JSON.stringify(body),
-      headers,
+      headers: mergedHeaders,
     });
   }
 
-  public delete<T>(endpoint: string, headers?: Record<string, string>) {
-    return this.request<T>(endpoint, { method: "DELETE", headers });
+  public delete<T>(
+    endpoint: string,
+    headers?: Record<string, string>,
+    config: ApiConfig = {}
+  ) {
+    const mergedHeaders = { ...headers, ...config.headers };
+    return this.request<T>(endpoint, { ...config, method: "DELETE", headers: mergedHeaders });
   }
 }
 

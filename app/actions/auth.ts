@@ -41,7 +41,7 @@ export async function loginAction(
       pass_word: password,
     };
 
-    const result = await apiClient.post<ApiResponse>("/auth/login", payload);
+    const result = await apiClient.post<ApiResponse>("/auth/login", payload, undefined, { skipAuth: true });
 
     if (result.success && result.response) {
       const { refresh_token, jwt_token, user_id } = result.response;
