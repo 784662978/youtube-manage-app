@@ -46,6 +46,108 @@ import {
 import { Notification, NotificationType } from "@/components/ui/notification"
 import { LanguageSelectorModal, type Language } from "@/components/common/language-selector-modal"
 
+// AI Translation Configuration
+const AI_CONFIG = {
+  API_URL: "https://hk.uniapi.io/v1/chat/completions",
+  API_KEY: "sk-F1swlyRzDApHZh6_mCz5vTOZ2VMbIY-JRF7TfPLKfc06B-t-v9NH1m6SUls",
+  MODEL: "gpt-5-mini"
+}
+
+interface TranslationItem {
+  lang: string
+  title: string
+  description: string
+}
+
+interface TargetLanguage {
+  code: string
+  name: string
+}
+
+// Helper to translate all items in a single batch request
+const translateBatch = async (
+  title: string,
+  description: string,
+  targets: TargetLanguage[]
+): Promise<TranslationItem[]> => {
+  const maxRetries = 3
+  let lastError
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(AI_CONFIG.API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${AI_CONFIG.API_KEY}`
+        },
+        body: JSON.stringify({
+          model: AI_CONFIG.MODEL,
+          messages: [
+            {
+              role: "system",
+              content: `You are a professional translator. 
+              I will provide a source title, description, and a list of target languages. 
+              You must translate the source content into EACH target language.
+              
+              Return a JSON array where each object has the following structure:
+              {
+                "lang": "the language code provided in the target list",
+                "title": "the translated title",
+                "description": "the translated description"
+              }
+              
+              Return ONLY the standard JSON array without any markdown formatting or code blocks.`
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                source: {
+                  title,
+                  description
+                },
+                targets: targets.map(t => ({ code: t.code, name: t.name }))
+              })
+            }
+          ]
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`AI API request failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      let content = data.choices[0]?.message?.content?.trim()
+
+      if (!content) {
+        throw new Error("Empty response from AI")
+      }
+
+      // Clean up markdown code blocks if present
+      if (content.startsWith("```json")) {
+        content = content.replace(/^```json\s*/, "").replace(/\s*```$/, "")
+      } else if (content.startsWith("```")) {
+        content = content.replace(/^```\s*/, "").replace(/\s*```$/, "")
+      }
+
+      const parsed = JSON.parse(content)
+      if (!Array.isArray(parsed)) {
+        throw new Error("AI response is not an array")
+      }
+      return parsed
+    } catch (error) {
+      console.warn(`Batch translation attempt ${i + 1} failed:`, error)
+      lastError = error
+      // Wait before retry (exponential backoff: 1s, 2s, 3s)
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+      }
+    }
+  }
+  throw lastError
+}
+
 interface Video {
   id: number
   video_id: string
@@ -87,7 +189,7 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
 
   // Language Modal State
   const [addLangOpen, setAddLangOpen] = React.useState(false)
-  const [currentVideoId, setCurrentVideoId] = React.useState<string | null>(null)
+  const [currentVideoId, setCurrentVideoId] = React.useState<number | null>(null)
   const [languages, setLanguages] = React.useState<Language[]>([])
   const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>([])
   const [langTitle, setLangTitle] = React.useState("")
@@ -197,7 +299,7 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
     }
   }
 
-  const handleOpenAddLang = (videoId: string) => {
+  const handleOpenAddLang = (videoId: number) => {
     setCurrentVideoId(videoId)
     setAddLangOpen(true)
     setSelectedLanguages([])
@@ -218,23 +320,37 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
       return
     }
 
+    if (!langDescription.trim()) {
+      showNotification("描述不能为空", "error")
+      return
+    }
+
     setIsLangSubmitting(true)
     try {
-      const payload = {
-        langs: selectedLanguages.map(langCode => ({
-          lang: langCode,
-          title: langTitle,
-          description: langDescription
-        }))
-      }
+      // Prepare targets for AI
+      const targets: TargetLanguage[] = selectedLanguages.map(langCode => {
+        const langInfo = languages.find(l => l.code === langCode)
+        return {
+          code: langCode,
+          name: langInfo ? langInfo.name : langCode
+        }
+      })
 
+      // Perform AI Translation (Single Batch Request)
+      showNotification("正在进行AI批量翻译...", "success")
+      
+      const translatedItems = await translateBatch(langTitle, langDescription, targets)
+
+      const payload = {
+        langs: translatedItems
+      }
       await apiClient.post(`/video/add-lang/${currentVideoId}`, payload)
 
       showNotification("添加语言成功", "success")
       setAddLangOpen(false)
     } catch (error: any) {
       console.error("Add language failed", error)
-      showNotification(error.response?.data?.msg || "添加语言失败", "error")
+      showNotification(error.message || error.response?.data?.msg || "添加语言失败", "error")
     } finally {
       setIsLangSubmitting(false)
     }
@@ -339,7 +455,7 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>操作</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleOpenAddLang(video.video_id)}>
+                            <DropdownMenuItem onClick={() => handleOpenAddLang(video.id)}>
                               <Languages className="mr-2 h-4 w-4" />添加语言
                             </DropdownMenuItem>
                           </DropdownMenuContent>

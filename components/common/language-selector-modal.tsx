@@ -134,12 +134,13 @@ export function LanguageSelectorModal({
               id="lang-desc"
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
-              placeholder="输入详情描述（可选）"
+              placeholder="输入详情描述"
               className="h-24"
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="items-center">
+            <label className="text-sm text-muted-foreground">由于提交的内容需要进行AI批量翻译，可能需要一些时间。</label>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               提交

@@ -141,7 +141,7 @@ export function DataTableDemo() {
 
   // Video List State
   const [videoListOpen, setVideoListOpen] = React.useState(false)
-  const [currentChannelForVideo, setCurrentChannelForVideo] = React.useState<{id: number, name: string} | null>(null)
+  const [currentChannelForVideo, setCurrentChannelForVideo] = React.useState<{ id: number, name: string } | null>(null)
 
   const columnTranslations: { [key: string]: string } = {
     id: "ID",
@@ -305,7 +305,7 @@ export function DataTableDemo() {
             variant={row.getValue("auth_status") === 0 ? "destructive" : "default"}
           >
             {row.getValue("auth_status") === 0 ? "未授权" : "已授权"}
-          </Badge> 
+          </Badge>
         </div>
       ),
     },
@@ -339,12 +339,6 @@ export function DataTableDemo() {
                 <Trash className="mr-2 h-4 w-4" />删除
               </DropdownMenuItem>
               <DropdownMenuLabel>频道操作</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => {
-                setCurrentChannelForVideo({ id: payment.id, name: payment.name })
-                setVideoListOpen(true)
-              }}>
-                <Video className="mr-2 h-4 w-4" />查看视频
-              </DropdownMenuItem>
               {
                 payment.auth_status === 0 &&
                 <DropdownMenuItem onClick={() => handleAuthorize(payment.id)}>
@@ -367,6 +361,13 @@ export function DataTableDemo() {
                       <RefreshCw className="mr-2 h-4 w-4" />
                     )}
                     同步内容
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => {
+                    setCurrentChannelForVideo({ id: payment.id, name: payment.name })
+                    setVideoListOpen(true)
+                  }}>
+                    <Video className="mr-2 h-4 w-4" />查看视频
                   </DropdownMenuItem>
                 </>
               }
@@ -630,9 +631,9 @@ export function DataTableDemo() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <VideoListModal 
-        isOpen={videoListOpen} 
-        onClose={() => setVideoListOpen(false)} 
+      <VideoListModal
+        isOpen={videoListOpen}
+        onClose={() => setVideoListOpen(false)}
         channelId={currentChannelForVideo?.id ?? null}
         channelName={currentChannelForVideo?.name ?? ""}
       />
