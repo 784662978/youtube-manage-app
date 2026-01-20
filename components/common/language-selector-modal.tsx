@@ -28,6 +28,7 @@ export interface LanguageSelectorModalProps {
   
   // Form Data
   videoId: string | number | null
+  defaultLanguage?: string
   onVideoIdChange?: (id: string) => void
   title: string
   description: string
@@ -48,6 +49,7 @@ export function LanguageSelectorModal({
   languages,
   selectedLanguages,
   videoId,
+  defaultLanguage,
   onVideoIdChange,
   title,
   description,
@@ -89,7 +91,10 @@ export function LanguageSelectorModal({
               disabled={!onVideoIdChange}
               className={!onVideoIdChange ? "bg-muted" : ""}
             />
-            <p className="text-xs text-muted-foreground">当前选中的视频 ID</p>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">当前选中的视频 ID</p>
+              <p className="text-sm font-medium">源语言：{defaultLanguage || "未知语言"}</p>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>选择语言 <span className="text-red-500">*</span></Label>

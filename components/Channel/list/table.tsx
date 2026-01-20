@@ -129,7 +129,7 @@ export function DataTableDemo() {
   const handleSync = async (id: number) => {
     setSyncingId(id)
     try {
-      await apiClient.post(`/dataSync/sync-all/${id}`, {})
+      await apiClient.get(`/data/sync-all/${id}`)
       showNotification("同步成功", "success")
     } catch (error) {
       console.error("Sync failed", error)

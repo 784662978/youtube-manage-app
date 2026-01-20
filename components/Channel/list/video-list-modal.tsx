@@ -155,6 +155,7 @@ interface Video {
   publish_time: string
   duration: string | number
   country: string
+  default_language: string
 }
 
 interface VideoListResponse {
@@ -190,6 +191,7 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
   // Language Modal State
   const [addLangOpen, setAddLangOpen] = React.useState(false)
   const [currentVideoId, setCurrentVideoId] = React.useState<number | null>(null)
+  const [currentDefaultLang, setCurrentDefaultLang] = React.useState("")
   const [languages, setLanguages] = React.useState<Language[]>([])
   const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>([])
   const [langTitle, setLangTitle] = React.useState("")
@@ -299,8 +301,9 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
     }
   }
 
-  const handleOpenAddLang = (videoId: number) => {
+  const handleOpenAddLang = (videoId: number, defaultLang: string) => {
     setCurrentVideoId(videoId)
+    setCurrentDefaultLang(defaultLang)
     setAddLangOpen(true)
     setSelectedLanguages([])
     setLangTitle("")
@@ -342,7 +345,8 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
       const translatedItems = await translateBatch(langTitle, langDescription, targets)
 
       const payload = {
-        langs: translatedItems
+        langs: translatedItems,
+        default_language: currentDefaultLang
       }
       await apiClient.post(`/video/add-lang/${currentVideoId}`, payload)
 
@@ -455,7 +459,7 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>操作</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleOpenAddLang(video.id)}>
+                            <DropdownMenuItem onClick={() => handleOpenAddLang(video.id, video.default_language)}>
                               <Languages className="mr-2 h-4 w-4" />添加语言
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -560,6 +564,7 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
           languages={languages}
           selectedLanguages={selectedLanguages}
           videoId={currentVideoId}
+          defaultLanguage={currentDefaultLang}
           // Do not allow editing video ID here as it comes from the row
           title={langTitle}
           description={langDescription}
