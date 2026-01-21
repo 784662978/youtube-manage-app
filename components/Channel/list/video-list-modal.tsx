@@ -41,10 +41,12 @@ import {
   ChevronsLeft, 
   ChevronsRight,
   Languages,
-  MoreHorizontal
+  MoreHorizontal,
+  TrendingUp
 } from "lucide-react"
 import { Notification, NotificationType } from "@/components/ui/notification"
 import { LanguageSelectorModal, type Language } from "@/components/common/language-selector-modal"
+import { VideoAnalyticsModal } from "./video-analytics-modal"
 
 // AI Translation Configuration
 const AI_CONFIG = {
@@ -198,6 +200,11 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
   const [langDescription, setLangDescription] = React.useState("")
   const [isLangSubmitting, setIsLangSubmitting] = React.useState(false)
 
+  // Analytics Modal State
+  const [analyticsOpen, setAnalyticsOpen] = React.useState(false)
+  const [analyticsVideoId, setAnalyticsVideoId] = React.useState<number | null>(null)
+  const [analyticsVideoTitle, setAnalyticsVideoTitle] = React.useState("")
+
   // Notification State
   const [notification, setNotification] = React.useState<{
     message: string
@@ -309,6 +316,12 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
     setLangTitle("")
     setLangDescription("")
     fetchLanguages()
+  }
+
+  const handleOpenAnalytics = (videoId: number, title: string) => {
+    setAnalyticsVideoId(videoId)
+    setAnalyticsVideoTitle(title)
+    setAnalyticsOpen(true)
   }
 
   const handleLangSubmit = async (e: React.FormEvent) => {
@@ -462,6 +475,9 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
                             <DropdownMenuItem onClick={() => handleOpenAddLang(video.id, video.default_language)}>
                               <Languages className="mr-2 h-4 w-4" />添加语言
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenAnalytics(video.id, video.title)}>
+                              <TrendingUp className="mr-2 h-4 w-4" />Youtube数据概况
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -573,6 +589,13 @@ export function VideoListModal({ isOpen, onClose, channelId, channelName }: Vide
           onDescriptionChange={setLangDescription}
           onSubmit={handleLangSubmit}
           isSubmitting={isLangSubmitting}
+        />
+        
+        <VideoAnalyticsModal 
+          isOpen={analyticsOpen}
+          onClose={() => setAnalyticsOpen(false)}
+          videoId={analyticsVideoId}
+          videoTitle={analyticsVideoTitle}
         />
       </DialogContent>
     </Dialog>
