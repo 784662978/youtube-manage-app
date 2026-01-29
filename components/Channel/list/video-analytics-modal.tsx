@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import dayjs from "dayjs"
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter"
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore"
@@ -37,6 +38,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { cn } from "@/lib/utils"
 import { AnimatedNumber } from "@/components/ui/animated-number"
 import { generateExcelXML, downloadExcel } from "@/lib/excel-helper"
+import { Notification, NotificationType } from "@/components/ui/notification"
 
 interface AnalyticsData {
   date: string
@@ -64,12 +66,28 @@ export function VideoAnalyticsModal({ isOpen, onClose, videoId, videoTitle }: Vi
   const [dateRange, setDateRange] = React.useState<{ start: string; end: string }>({ start: "", end: "" })
   const [sortConfig, setSortConfig] = React.useState<{ field: SortField; order: SortOrder }>({ field: 'date', order: 'desc' })
 
+  // Notification State
+  const [notification, setNotification] = React.useState<{
+    message: string
+    type: NotificationType
+    isVisible: boolean
+  }>({ message: "", type: "success", isVisible: false })
+
+  const showNotification = (message: string, type: NotificationType = "success") => {
+    setNotification({ message, type, isVisible: true })
+  }
+
   const fetchData = React.useCallback(async () => {
     if (!videoId) return
     setLoading(true)
     setError(null)
     try {
-      const res = await apiClient.get<{ response: AnalyticsData[] }>(`/data/analytics-daily/${videoId}`)
+      const res = await apiClient.get<{ response: AnalyticsData[], success: boolean, msg: string }>(`/data/analytics-daily/${videoId}`)
+      if (res.success === false) {
+        showNotification(res.msg || "获取数据失败", "error")
+        return
+      }
+
       // Sort by date desc by default
       const sortedData = (res.response || []).sort((a, b) => dayjs(b.date).unix() - dayjs(a.date).unix())
       setData(sortedData)
@@ -167,111 +185,122 @@ export function VideoAnalyticsModal({ isOpen, onClose, videoId, videoTitle }: Vi
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[90%] w-[1000px] h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="p-6 pb-4 border-b">
-          <div className="flex justify-between items-center">
-            <DialogTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Youtube数据概况 - <span className="text-muted-foreground text-sm font-normal truncate max-w-[400px]">{videoTitle}</span>
-            </DialogTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-                <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-                刷新
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || data.length === 0}>
-                <Download className="w-4 h-4 mr-2" />
-                导出
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
-          {loading && data.length === 0 ? (
-            <div className="flex justify-center items-center h-full">
-              <Loader className="animate-spin w-8 h-8 text-primary" />
-            </div>
-          ) : error ? (
-            <div className="flex flex-col justify-center items-center h-full gap-4">
-              <p className="text-red-500">{error}</p>
-              <Button onClick={fetchData}>重试</Button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card 
-                  title="总观看次数" 
-                  value={<AnimatedNumber value={stats.totalViews} />} 
-                  icon={<Eye className="w-4 h-4 text-blue-500" />} 
-                />
-                <Card 
-                  title="总预估收入" 
-                  value={<AnimatedNumber value={stats.totalRevenue} prefix="$" decimals={2} />} 
-                  icon={<DollarSign className="w-4 h-4 text-green-500" />} 
-                />
-                <Card 
-                  title="平均观看时长" 
-                  value={<AnimatedNumber value={stats.avgDuration} suffix="s" decimals={1} />} 
-                  icon={<Clock className="w-4 h-4 text-orange-500" />} 
-                />
+    <>
+      {typeof document !== "undefined" && createPortal(
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          isVisible={notification.isVisible}
+          onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
+        />,
+        document.body
+      )}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-[90%] w-[1000px] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-6 pb-4 border-b">
+            <div className="flex justify-between items-center">
+              <DialogTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Youtube数据概况 - <span className="text-muted-foreground text-sm font-normal truncate max-w-[400px]">{videoTitle}</span>
+              </DialogTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+                  <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
+                  刷新
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || data.length === 0}>
+                  <Download className="w-4 h-4 mr-2" />
+                  导出
+                </Button>
               </div>
+            </div>
+          </DialogHeader>
 
-              {/* Chart Section - Enhanced SVG Line Chart */}
-              <div className="bg-card border rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">趋势图表</h3>
-                <div className="h-[300px] w-full">
-                   <EnhancedLineChart data={filteredData} />
+          <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
+            {loading && data.length === 0 ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader className="animate-spin w-8 h-8 text-primary" />
+              </div>
+            ) : error ? (
+              <div className="flex flex-col justify-center items-center h-full gap-4">
+                <p className="text-red-500">{error}</p>
+                <Button onClick={fetchData}>重试</Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card 
+                    title="总观看次数" 
+                    value={<AnimatedNumber value={stats.totalViews} />} 
+                    icon={<Eye className="w-4 h-4 text-blue-500" />} 
+                  />
+                  <Card 
+                    title="总预估收入" 
+                    value={<AnimatedNumber value={stats.totalRevenue} prefix="$" decimals={2} />} 
+                    icon={<DollarSign className="w-4 h-4 text-green-500" />} 
+                  />
+                  <Card 
+                    title="平均观看时长" 
+                    value={<AnimatedNumber value={stats.avgDuration} suffix="s" decimals={1} />} 
+                    icon={<Clock className="w-4 h-4 text-orange-500" />} 
+                  />
+                </div>
+
+                {/* Chart Section - Enhanced SVG Line Chart */}
+                <div className="bg-card border rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4">趋势图表</h3>
+                  <div className="h-[300px] w-full">
+                     <EnhancedLineChart data={filteredData} />
+                  </div>
+                </div>
+
+                {/* Table Section */}
+                <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('date')}>
+                          日期 {sortConfig.field === 'date' && (sortConfig.order === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('views')}>
+                          观看次数 {sortConfig.field === 'views' && (sortConfig.order === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('estimated_revenue')}>
+                          预估收入 {sortConfig.field === 'estimated_revenue' && (sortConfig.order === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead>台湾收入</TableHead>
+                        <TableHead>美国收入</TableHead>
+                        <TableHead>平均时长(秒)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.map((row) => (
+                        <TableRow key={row.date}>
+                          <TableCell>{row.date}</TableCell>
+                          <TableCell>{row.views.toLocaleString()}</TableCell>
+                          <TableCell className="text-green-600 font-medium">${row.estimated_revenue.toFixed(4)}</TableCell>
+                          <TableCell>${row.estimated_revenue_tw.toFixed(4)}</TableCell>
+                          <TableCell>${row.estimated_revenue_us.toFixed(4)}</TableCell>
+                          <TableCell>{row.average_view_duration.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredData.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                            暂无数据
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
-
-              {/* Table Section */}
-              <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('date')}>
-                        日期 {sortConfig.field === 'date' && (sortConfig.order === 'asc' ? '↑' : '↓')}
-                      </TableHead>
-                      <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('views')}>
-                        观看次数 {sortConfig.field === 'views' && (sortConfig.order === 'asc' ? '↑' : '↓')}
-                      </TableHead>
-                      <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('estimated_revenue')}>
-                        预估收入 {sortConfig.field === 'estimated_revenue' && (sortConfig.order === 'asc' ? '↑' : '↓')}
-                      </TableHead>
-                      <TableHead>台湾收入</TableHead>
-                      <TableHead>美国收入</TableHead>
-                      <TableHead>平均时长(秒)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredData.map((row) => (
-                      <TableRow key={row.date}>
-                        <TableCell>{row.date}</TableCell>
-                        <TableCell>{row.views.toLocaleString()}</TableCell>
-                        <TableCell className="text-green-600 font-medium">${row.estimated_revenue.toFixed(4)}</TableCell>
-                        <TableCell>${row.estimated_revenue_tw.toFixed(4)}</TableCell>
-                        <TableCell>${row.estimated_revenue_us.toFixed(4)}</TableCell>
-                        <TableCell>{row.average_view_duration.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredData.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                          暂无数据
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
