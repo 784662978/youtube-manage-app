@@ -47,7 +47,7 @@ export function LoginForm({
       
       // 登录成功后跳转 (例如跳转到首页)
       // 使用 replace 防止用户点回退再次回到登录页
-      router.replace("/")
+      router.replace("/Channel/list")
     }
   }, [state, router])
 
