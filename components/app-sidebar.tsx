@@ -4,7 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
-import { List } from 'lucide-react'
+import { List, SquareActivity } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +30,13 @@ export const data = {
           url: "/Channel/list",
           icon: List,
           isActive: true,
+        },
+        // 监控频道
+        {
+          title: "监控频道",
+          url: "/Channel/monitor",
+          icon: SquareActivity,
+          isActive: false,
         }
       ],
     },
