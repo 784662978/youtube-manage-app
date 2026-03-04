@@ -4,7 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
-import { List, SquareActivity } from 'lucide-react'
+import { List, SquareActivity, BotMessageSquare } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -38,6 +38,18 @@ export const data = {
           icon: SquareActivity,
           isActive: false,
         }
+      ],
+    },
+    {
+      title: "工具",
+      url: "/ai-tools",
+      items: [
+        {
+          title: "智能助手",
+          url: "/ai-tools/chat",
+          icon: BotMessageSquare,
+          isActive: false,
+        },
       ],
     },
   ],
