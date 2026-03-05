@@ -10,6 +10,7 @@
     "export": "node scripts/export-static.js"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.39",
     "@ai-sdk/react": "^3.0.113",
     "@base-ui/react": "^1.0.0",
     "@tanstack/react-table": "^8.21.3",
