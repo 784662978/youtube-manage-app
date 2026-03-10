@@ -2,8 +2,9 @@
 
 import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, UIMessage } from 'ai'
-import { Send, Loader2, Bot, User, Trash2, Plus, MessageSquare, Menu, X, Sparkles } from 'lucide-react'
+import { Send, Loader2, Bot, User, Trash2, Plus, MessageSquare, Menu, X, Sparkles, Image as ImageIcon, Download, Copy, Check } from 'lucide-react'
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { 
@@ -36,12 +37,29 @@ const AI_MODELS = [
 
 type ModelId = typeof AI_MODELS[number]['id']
 
+// 图片生成相关类型
+interface GeneratedImage {
+  id: string
+  url: string
+  prompt: string
+  createdAt: number
+  model: string
+}
+
+type Mode = 'chat' | 'image'
+
 export default function ChatPage() {
   const [input, setInput] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const [initialLoadDone, setInitialLoadDone] = useState(false)
   const [selectedModel, setSelectedModel] = useState<ModelId>('deepseek')
+  
+  // 图片生成相关状态
+  const [mode, setMode] = useState<Mode>('chat')
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([])
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   
   const {
     sessions,
@@ -245,6 +263,81 @@ export default function ChatPage() {
     clearCurrentSession()
   }
 
+  // 图片生成相关函数
+  const handleImageGenerate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isGenerating) return
+
+    const prompt = input.trim()
+    setInput('')
+    setIsGenerating(true)
+
+    try {
+      const response = await fetch('/api/ai/doubao/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          model: 'seedream-4.0',
+          size: '1024x1024',
+          n: 1,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '生成图片失败')
+      }
+
+      const data = await response.json()
+      
+      // 添加生成的图片到列表
+      const newImages: GeneratedImage[] = data.data.map((img: { url: string }, index: number) => ({
+        id: `${Date.now()}-${index}`,
+        url: img.url,
+        prompt,
+        createdAt: Date.now(),
+        model: 'seedream-4.0',
+      }))
+
+      setGeneratedImages(prev => [newImages[0], ...prev])
+    } catch (error) {
+      console.error('Image generation error:', error)
+      alert(error instanceof Error ? error.message : '生成图片失败，请重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 复制图片URL
+  const copyImageUrl = async (url: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (error) {
+      console.error('Copy failed:', error)
+    }
+  }
+
+  // 下载图片
+  const downloadImage = async (url: string, prompt: string) => {
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `${prompt.slice(0, 30)}-${Date.now()}.png`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      console.error('Download failed:', error)
+    }
+  }
+
   // 获取消息文本内容
   const getMessageContent = (message: typeof messages[0]) => {
     const textPart = message.parts?.find(part => part.type === 'text')
@@ -363,35 +456,132 @@ export default function ChatPage() {
               </Button>
             )}
             <div className="flex items-center gap-2">
-              <Bot className="w-6 h-6 text-primary" />
+              {mode === 'chat' ? (
+                <Bot className="w-6 h-6 text-primary" />
+              ) : (
+                <ImageIcon className="w-6 h-6 text-primary" />
+              )}
               <h1 className="text-xl font-semibold">
-                {currentSession?.title || 'AI 助手'}
+                {mode === 'chat' 
+                  ? (currentSession?.title || 'AI 助手')
+                  : '图片生成'
+                }
               </h1>
             </div>
           </div>
-          {messages.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearChat}
-              className="gap-1.5"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="hidden sm:inline">清空对话</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* 模式切换 */}
+            <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+              <Button
+                variant={mode === 'chat' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setMode('chat')}
+                className="gap-1.5"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">对话</span>
+              </Button>
+              <Button
+                variant={mode === 'image' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setMode('image')}
+                className="gap-1.5"
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">图片</span>
+              </Button>
+            </div>
+            {mode === 'chat' && messages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearChat}
+                className="gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">清空对话</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* 消息区域 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <Bot className="w-16 h-16 mb-4 opacity-50" />
-              <p className="text-lg font-medium">开始对话</p>
-              <p className="text-sm">在下方输入消息与 AI 助手交流</p>
-            </div>
+          {mode === 'image' ? (
+            // 图片生成模式
+            generatedImages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+                <p className="text-lg font-medium">AI 图片生成</p>
+                <p className="text-sm mt-2">输入描述，让 AI 为你创作精美图片</p>
+                <p className="text-xs mt-4 text-center max-w-md">
+                  支持生成高清图片，可下载或复制图片链接
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {generatedImages.map((image) => (
+                  <div
+                    key={image.id}
+                    className="group relative bg-muted/50 rounded-lg overflow-hidden border"
+                  >
+                    <Image
+                      src={image.url}
+                      alt={image.prompt}
+                      className="w-full aspect-square object-cover"
+                      width={512}
+                      height={512}
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <p className="text-white text-sm mb-2 line-clamp-2">{image.prompt}</p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => copyImageUrl(image.url, image.id)}
+                            className="gap-1"
+                          >
+                            {copiedId === image.id ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                已复制
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                复制
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => downloadImage(image.url, image.prompt)}
+                            className="gap-1"
+                          >
+                            <Download className="w-4 h-4" />
+                            下载
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
-            messages.map((message) => (
+            // 对话模式
+            messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <Bot className="w-16 h-16 mb-4 opacity-50" />
+                <p className="text-lg font-medium">开始对话</p>
+                <p className="text-sm">在下方输入消息与 AI 助手交流</p>
+              </div>
+            ) : (
+              <>
+                {messages.map((message) => (
               <div
                 key={message.id}
                 className={cn(
@@ -424,7 +614,9 @@ export default function ChatPage() {
                   </div>
                 </div>
               </div>
-            ))
+                ))}
+              </>
+            )
           )}
           {error && (
             <div className="text-destructive text-sm p-4 bg-destructive/10 rounded-lg">
@@ -436,58 +628,79 @@ export default function ChatPage() {
 
         {/* 输入区域 */}
         <div className="border-t p-4">
-          {/* 模型选择器 */}
-          <div className="flex items-center gap-2 mb-3 max-w-4xl mx-auto">
-            <Sparkles className="w-4 h-4 text-muted-foreground" />
-            <Select
-              value={selectedModel}
-              onValueChange={(value) => setSelectedModel(value as ModelId)}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="选择模型" />
-              </SelectTrigger>
-              <SelectContent>
-                {AI_MODELS.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    <span className="flex items-center gap-2">
-                      <span>{model.icon}</span>
-                      <span>{model.name}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {model.description}
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {mode === 'chat' && (
+            <>
+              {/* 模型选择器 */}
+              <div className="flex items-center gap-2 mb-3 max-w-4xl mx-auto">
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
+                <Select
+                  value={selectedModel}
+                  onValueChange={(value) => setSelectedModel(value as ModelId)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="选择模型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AI_MODELS.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{model.icon}</span>
+                          <span>{model.name}</span>
+                          <span className="text-muted-foreground text-xs">
+                            {model.description}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           
-          <form onSubmit={handleSubmit} className="flex gap-2 max-w-4xl mx-auto">
+          <form 
+            onSubmit={mode === 'chat' ? handleSubmit : handleImageGenerate} 
+            className="flex gap-2 max-w-4xl mx-auto"
+          >
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="输入消息... (Shift+Enter 换行)"
+              onKeyDown={mode === 'chat' ? handleKeyDown : undefined}
+              placeholder={mode === 'chat' 
+                ? "输入消息... (Shift+Enter 换行)" 
+                : "描述你想要生成的图片..."
+              }
               className="min-h-11 max-h-32 resize-none"
-              disabled={isLoading}
+              disabled={isLoading || isGenerating}
               rows={1}
             />
             <Button
               type="submit"
-              disabled={isLoading || !input.trim()}
+              disabled={(mode === 'chat' ? isLoading : isGenerating) || !input.trim()}
               className="shrink-0 h-11"
             >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+              {mode === 'chat' ? (
+                isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )
               ) : (
-                <Send className="w-5 h-5" />
+                isGenerating ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-5 h-5" />
+                )
               )}
             </Button>
           </form>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            按 Enter 发送消息，Shift+Enter 换行
+            {mode === 'chat' 
+              ? "按 Enter 发送消息，Shift+Enter 换行"
+              : "使用豆包 Seedream 4.0 模型生成高质量图片"
+            }
           </p>
         </div>
       </main>
