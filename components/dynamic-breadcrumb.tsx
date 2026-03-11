@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { usePathname } from "next/navigation"
-import { Slash } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
