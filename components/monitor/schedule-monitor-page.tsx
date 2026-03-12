@@ -1,22 +1,28 @@
 'use client'
 
 import * as React from 'react'
-import { ScheduleSummary } from './schedule-summary'
+import dayjs from 'dayjs'
+import { ScheduleSummary, type ScheduleSummaryProps } from './schedule-summary'
+import type { DateRange } from '@/components/ui/date-range-picker'
 import { ScheduleFilterBar } from './schedule-filter'
 import { ScheduleTable } from './schedule-table'
 import { ExcelImportDialog } from './excel-import-dialog'
-import type { ScheduleItem, ScheduleFilter, SelectOption } from '@/lib/types/monitor'
+import { apiClient } from '@/lib/api-client'
+import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse } from '@/lib/types/monitor'
 
 // 模拟下拉选项数据
 const defaultSelectOptions = {
   contentPrimary: [
     { value: '短剧', label: '短剧' },
-    { value: '长剧', label: '长剧' },
+    { value: '动态漫', label: '动态漫' },
+    { value: '电视剧', label: '电视剧' },
+    { value: '真人短剧', label: '真人短剧' },
   ],
   contentSecondary: [
     { value: '长剧', label: '长剧' },
     { value: '分销', label: '分销' },
     { value: '解说', label: '解说' },
+    { value: '其他', label: '其他' },
   ],
   language: [
     { value: '中文', label: '中文' },
@@ -25,17 +31,16 @@ const defaultSelectOptions = {
     { value: '韩语', label: '韩语' },
   ],
   ypp: [
-    { value: '是', label: '是' },
-    { value: '否', label: '否' },
+    { value: '1', label: '是' },
+    { value: '0', label: '否' },
   ],
   publishStatus: [
-    { value: '已发布', label: '已发布' },
-    { value: '未发布', label: '未发布' },
+    { value: '1', label: '已发布' },
+    { value: '0', label: '未发布' },
   ],
   copyrightStatus: [
-    { value: '已授权', label: '已授权' },
-    { value: '未授权', label: '未授权' },
-    { value: '待确认', label: '待确认' },
+    { value: '1', label: '正常' },
+    { value: '0', label: '禁播' },
   ],
   copyrightOwner: [
     { value: '版权方A', label: '版权方A' },
@@ -53,17 +58,16 @@ const defaultSelectOptions = {
     { value: '王五', label: '王五' },
   ],
   auditStatus: [
-    { value: '未审核', label: '未审核' },
-    { value: '已审核', label: '已审核' },
-    { value: '待审核', label: '待审核' },
+    { value: '0', label: '未审核' },
+    { value: '1', label: '已审核' },
   ],
   auditConclusion: [
-    { value: '通过', label: '通过' },
-    { value: '未通过', label: '未通过' },
+    { value: '1', label: '通过' },
+    { value: '0', label: '未通过' },
   ],
   modification: [
-    { value: '已修改', label: '已修改' },
-    { value: '未修改', label: '未修改' },
+    { value: '1', label: '已修改' },
+    { value: '0', label: '未修改' },
   ],
 }
 
@@ -111,32 +115,15 @@ const mockScheduleData: ScheduleItem[] = [
   },
 ]
 
-const mockSummary = {
-  dateRange: { start: '2026-01-01', end: '2026-01-31' },
-  totalVideos: 2,
-  totalChannels: 3,
-  yppPassedChannels: 1,
-  yppNotPassedChannels: 2,
-  totalOperators: 2,
-  contentTypes: [
-    {
-      primaryCategory: '短剧',
-      secondaryCategory: '长剧',
-      videoCount: 1,
-      copyrightDetails: '版权方A 1部',
-    },
-    {
-      primaryCategory: '短剧',
-      secondaryCategory: '分销',
-      videoCount: 1,
-      copyrightDetails: '—',
-    },
-  ],
-  publishStatuses: [
-    { status: '已发布', count: 1, remark: '' },
-    { status: '未发布', count: 1, remark: '' },
-    { status: '处于禁播状态的未发布视频', count: 0, remark: '详见下表格' },
-  ],
+const defaultSummary: ScheduleSummaryProps = {
+  dateRange: { start: '', end: '' },
+  totalVideos: 0,
+  totalChannels: 0,
+  yppPassedChannels: 0,
+  yppNotPassedChannels: 0,
+  totalOperators: 0,
+  contentTypes: [],
+  publishStatuses: [],
   bannedVideos: [],
 }
 
@@ -202,32 +189,76 @@ function exportToExcel(data: ScheduleItem[], filename: string = '排期明细') 
 }
 
 export function ScheduleMonitorPage() {
-  const [filter, setFilter] = React.useState<ScheduleFilter>({})
+  const [filter, setFilter] = React.useState<ScheduleFilter>({
+    expectedPublishDateStart: dayjs().startOf('month').format('YYYY-MM-DD'),
+    expectedPublishDateEnd: dayjs().endOf('month').format('YYYY-MM-DD'),
+  })
   const [data, setData] = React.useState<ScheduleItem[]>(mockScheduleData)
+  const [summary, setSummary] = React.useState<ScheduleSummaryProps>(defaultSummary)
   const [showImportDialog, setShowImportDialog] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(false)
+
+  const fetchSummary = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const startDate = filter.expectedPublishDateStart || dayjs().startOf('month').format('YYYY-MM-DD')
+      const endDate = filter.expectedPublishDateEnd || dayjs().endOf('month').format('YYYY-MM-DD')
+
+      const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate
+      })
+
+      const { response } = await apiClient.get<{ response: ScheduleSummaryReportResponse }>(`/publishPlan/schedule-summary-report?${params.toString()}`)
+
+      // Transform API response to ScheduleSummaryProps
+      const newSummary = {
+        dateRange: { start: startDate, end: endDate },
+        totalVideos: response.contentTypeDistributions.reduce((acc, curr) => acc + curr.videoCount, 0),
+        // Since API doesn't provide these counts yet, we keep them as 0 or could fetch separately if needed
+        totalChannels: 0,
+        yppPassedChannels: 0,
+        yppNotPassedChannels: 0,
+        totalOperators: 0,
+        contentTypes: response.contentTypeDistributions.map(item => ({
+          primaryCategory: item.contentCategoryLevel1,
+          secondaryCategory: item.contentCategoryLevel2,
+          videoCount: item.videoCount,
+          copyrightDetails: item.copyrightDetail
+        })),
+        publishStatuses: response.publishStatusSummaries.map(item => ({
+          status: item.status,
+          count: item.count,
+          remark: item.remark
+        })),
+        bannedVideos: response.prohibitedVideos.map(item => ({
+          videoId: item.videoId,
+          dramaName: item.videoName,
+          expectedChannel: item.plannedChannel,
+          expectedOperator: item.plannedOperator
+        }))
+      }
+
+      setSummary(newSummary)
+    } catch (error) {
+      console.error('Failed to fetch schedule summary', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [filter.expectedPublishDateStart, filter.expectedPublishDateEnd])
+
+  React.useEffect(() => {
+    fetchSummary()
+  }, [fetchSummary])
 
   const handleSearch = () => {
     // TODO: 实现搜索逻辑（对接API）
     console.log('Search with filter:', filter)
+    fetchSummary()
   }
 
   const handleDelete = (id: string) => {
     setData(data.filter((item) => item.id !== id))
-  }
-
-  const handleSave = (item: ScheduleItem) => {
-    // 更新现有记录
-    const index = data.findIndex((d) => d.id === item.id)
-    if (index >= 0) {
-      const newData = [...data]
-      newData[index] = item
-      setData(newData)
-    }
-  }
-
-  const handleAdd = (item: ScheduleItem) => {
-    // 新增记录
-    setData([...data, item])
   }
 
   const handleExport = () => {
@@ -247,64 +278,28 @@ export function ScheduleMonitorPage() {
     setShowImportDialog(true)
   }
 
+  // 处理日期范围变化
+  const handleDateRangeChange = (range: DateRange) => {
+    setFilter(prev => ({
+      ...prev,
+      expectedPublishDateStart: range.start,
+      expectedPublishDateEnd: range.end,
+    }))
+  }
+
   // 处理Excel导入结果
   const handleImportComplete = (items: ScheduleItem[]) => {
     setData([...data, ...items])
   }
 
-  // 更新概况统计
-  const updateSummary = React.useMemo(() => {
-    const totalVideos = data.length
-    const channels = new Set(data.map((d) => d.expectedPublishChannel))
-    const operators = new Set(data.map((d) => d.expectedOperator))
-    const yppPassed = data.filter((d) => d.isYPPPassed).length
-    const yppNotPassed = totalVideos - yppPassed
-
-    // 内容类型统计
-    const typeMap = new Map<string, { count: number; copyrights: Set<string> }>()
-    data.forEach((item) => {
-      const key = `${item.contentPrimaryCategory}-${item.contentSecondaryCategory}`
-      if (!typeMap.has(key)) {
-        typeMap.set(key, { count: 0, copyrights: new Set() })
-      }
-      const entry = typeMap.get(key)!
-      entry.count++
-      entry.copyrights.add(item.copyrightOwner)
-    })
-    const contentTypes = Array.from(typeMap.entries()).map(([key, value]) => {
-      const [primary, secondary] = key.split('-')
-      return {
-        primaryCategory: primary,
-        secondaryCategory: secondary,
-        videoCount: value.count,
-        copyrightDetails: Array.from(value.copyrights).join('、') + ` 各${value.count}部`,
-      }
-    })
-
-    // 发布状态统计
-    const published = data.filter((d) => d.publishStatus === '已发布').length
-    const unpublished = data.filter((d) => d.publishStatus === '未发布').length
-    const publishStatuses = [
-      { status: '已发布', count: published, remark: '' },
-      { status: '未发布', count: unpublished, remark: '' },
-    ]
-
-    return {
-      ...mockSummary,
-      totalVideos,
-      totalChannels: channels.size,
-      yppPassedChannels: yppPassed,
-      yppNotPassedChannels: yppNotPassed,
-      totalOperators: operators.size,
-      contentTypes,
-      publishStatuses,
-    }
-  }, [data])
-
   return (
     <div className="space-y-6 py-4">
       {/* 排期概况 */}
-      <ScheduleSummary {...updateSummary} />
+      <ScheduleSummary 
+        {...summary} 
+        isLoading={isLoading}
+        onDateRangeChange={handleDateRangeChange}
+      />
 
       {/* 筛选栏 */}
       <ScheduleFilterBar
@@ -329,19 +324,8 @@ export function ScheduleMonitorPage() {
       <ScheduleTable
         data={data}
         onDelete={handleDelete}
-        onSave={handleSave}
-        onAdd={handleAdd}
         onExport={handleExport}
         onImport={handleImport}
-        contentPrimaryOptions={defaultSelectOptions.contentPrimary}
-        contentSecondaryOptions={defaultSelectOptions.contentSecondary}
-        languageOptions={defaultSelectOptions.language}
-        channelOptions={defaultSelectOptions.channel}
-        operatorOptions={defaultSelectOptions.operator}
-        copyrightStatusOptions={defaultSelectOptions.copyrightStatus}
-        auditStatusOptions={defaultSelectOptions.auditStatus}
-        auditConclusionOptions={defaultSelectOptions.auditConclusion}
-        modificationOptions={defaultSelectOptions.modification}
       />
 
       {/* Excel导入对话框 */}

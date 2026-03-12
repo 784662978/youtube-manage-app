@@ -99,6 +99,27 @@ export interface MissingPublishTimeAlert {
   operator: string
 }
 
+// API Response Types
+export interface ScheduleSummaryReportResponse {
+  contentTypeDistributions: {
+    contentCategoryLevel1: string
+    contentCategoryLevel2: string
+    videoCount: number
+    copyrightDetail: string
+  }[]
+  publishStatusSummaries: {
+    status: string
+    count: number
+    remark: string
+  }[]
+  prohibitedVideos: {
+    videoId: string
+    videoName: string
+    plannedChannel: string
+    plannedOperator: string
+  }[]
+}
+
 // 告警项目 - 视频ID异常
 export interface VideoIdAnomalyAlert {
   type: 'web_has_db_not' | 'db_has_web_not' // 网页有/数据库没有 或 数据库有/网页没有

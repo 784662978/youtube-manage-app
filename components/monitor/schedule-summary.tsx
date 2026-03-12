@@ -7,14 +7,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { DateRangePicker, type DateRange } from '@/components/ui/date-range-picker'
+import { Loader2 } from 'lucide-react'
 import type {
   ContentTypeDistribution,
   PublishStatusDistribution,
   BannedVideo,
 } from '@/lib/types/monitor'
 
-interface ScheduleSummaryProps {
+export interface ScheduleSummaryProps {
+  isLoading?: boolean
   dateRange: { start: string; end: string }
+  onDateRangeChange?: (range: DateRange) => void
   totalVideos: number
   totalChannels: number
   yppPassedChannels: number
@@ -26,7 +30,9 @@ interface ScheduleSummaryProps {
 }
 
 export function ScheduleSummary({
+  isLoading = false,
   dateRange,
+  onDateRangeChange,
   totalVideos,
   totalChannels,
   yppPassedChannels,
@@ -39,7 +45,15 @@ export function ScheduleSummary({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-base">排期概况</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">排期概况</CardTitle>
+          {onDateRangeChange && (
+            <DateRangePicker
+              value={dateRange}
+              onChange={onDateRangeChange}
+            />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* 概况描述 */}
@@ -67,14 +81,31 @@ export function ScheduleSummary({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contentTypes.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.primaryCategory}</TableCell>
-                    <TableCell>{item.secondaryCategory}</TableCell>
-                    <TableCell>{item.videoCount}</TableCell>
-                    <TableCell>{item.copyrightDetails || '—'}</TableCell>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      <div className="flex items-center justify-center text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        加载中...
+                      </div>
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : contentTypes.length > 0 ? (
+                  contentTypes.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.primaryCategory}</TableCell>
+                      <TableCell>{item.secondaryCategory}</TableCell>
+                      <TableCell>{item.videoCount}</TableCell>
+                      <TableCell>{item.copyrightDetails || '—'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                      暂无数据
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -93,13 +124,30 @@ export function ScheduleSummary({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {publishStatuses.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.status}</TableCell>
-                    <TableCell>{item.count}</TableCell>
-                    <TableCell>{item.remark || '—'}</TableCell>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center">
+                      <div className="flex items-center justify-center text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        加载中...
+                      </div>
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : publishStatuses.length > 0 ? (
+                  publishStatuses.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.status}</TableCell>
+                      <TableCell>{item.count}</TableCell>
+                      <TableCell>{item.remark || '—'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                      暂无数据
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -118,7 +166,16 @@ export function ScheduleSummary({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bannedVideos.length > 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        <div className="flex items-center justify-center text-muted-foreground">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          加载中...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : bannedVideos.length > 0 ? (
                     bannedVideos.map((video, index) => (
                       <TableRow key={index}>
                         <TableCell>{video.videoId}</TableCell>
@@ -129,7 +186,7 @@ export function ScheduleSummary({
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                         暂无数据
                       </TableCell>
                     </TableRow>
