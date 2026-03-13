@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       }
 
       return {
-        role: msg.role,
+        role: msg.role as 'user' | 'assistant' | 'system',
         content,
       }
     })

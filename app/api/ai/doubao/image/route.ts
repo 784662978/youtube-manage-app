@@ -1,4 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai'
+import { generateImage } from 'ai'
 
 // 豆包 API 配置
 const doubao = createOpenAI({
@@ -46,18 +47,20 @@ export async function POST(req: Request) {
     const modelId = IMAGE_MODELS[model] || IMAGE_MODELS['seedream-4.0']
 
     // 调用图片生成 API
-    const response = await doubao.images.generate({
-      model: modelId,
+    const { image } = await generateImage({
+      model: doubao.image(modelId),
       prompt,
       n,
       size,
-      ...(negative_prompt && { negative_prompt }),
-      ...(seed && { seed }),
+      ...(negative_prompt && { negativePrompt: negative_prompt }),
+      ...(seed !== undefined && { seed }),
     })
 
     console.log('[Doubao Image] Generation successful')
 
-    return new Response(JSON.stringify(response), {
+    return new Response(JSON.stringify({ 
+      images: [image] 
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     })
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
     // 详细错误信息
     const errorMessage = error instanceof Error ? error.message : String(error)
     const errorDetails = error instanceof Error && 'response' in error 
-      ? (error as any).response 
+      ? (error as { response?: unknown }).response 
       : undefined
     
     return new Response(JSON.stringify({ 
