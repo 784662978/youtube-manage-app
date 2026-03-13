@@ -1,3 +1,6 @@
+'use client'
+
+import * as React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -7,13 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
 import { DateRangePicker, type DateRange } from '@/components/ui/date-range-picker'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type {
   ContentTypeDistribution,
   PublishStatusDistribution,
   BannedVideo,
 } from '@/lib/types/monitor'
+
+const DEFAULT_PAGE_SIZE = 20
 
 export interface ScheduleSummaryProps {
   isLoading?: boolean
@@ -42,6 +48,26 @@ export function ScheduleSummary({
   publishStatuses,
   bannedVideos,
 }: ScheduleSummaryProps) {
+  // 禁播视频分页状态
+  const [bannedPage, setBannedPage] = React.useState(1)
+  const totalPages = Math.ceil(bannedVideos.length / DEFAULT_PAGE_SIZE)
+  const startIndex = (bannedPage - 1) * DEFAULT_PAGE_SIZE
+  const endIndex = startIndex + DEFAULT_PAGE_SIZE
+  const currentBannedVideos = bannedVideos.slice(startIndex, endIndex)
+
+  // 数据变化时重置页码
+  React.useEffect(() => {
+    setBannedPage(1)
+  }, [bannedVideos.length])
+
+  const handlePrevPage = () => {
+    setBannedPage((p) => Math.max(1, p - 1))
+  }
+
+  const handleNextPage = () => {
+    setBannedPage((p) => Math.min(totalPages, p + 1))
+  }
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -175,10 +201,10 @@ export function ScheduleSummary({
                         </div>
                       </TableCell>
                     </TableRow>
-                  ) : bannedVideos.length > 0 ? (
-                    bannedVideos.map((video, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{video.videoId}</TableCell>
+                  ) : currentBannedVideos.length > 0 ? (
+                    currentBannedVideos.map((video, index) => (
+                      <TableRow key={startIndex + index}>
+                        <TableCell className="font-mono text-xs">{video.videoId}</TableCell>
                         <TableCell>{video.dramaName}</TableCell>
                         <TableCell>{video.expectedChannel}</TableCell>
                         <TableCell>{video.expectedOperator}</TableCell>
@@ -194,6 +220,35 @@ export function ScheduleSummary({
                 </TableBody>
               </Table>
             </div>
+
+            {/* 分页控制 */}
+            {!isLoading && bannedVideos.length > 0 && (
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  共 {bannedVideos.length} 条，第 {bannedPage}/{totalPages || 1} 页
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={bannedPage <= 1}
+                    onClick={handlePrevPage}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    上一页
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={bannedPage >= totalPages}
+                    onClick={handleNextPage}
+                  >
+                    下一页
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

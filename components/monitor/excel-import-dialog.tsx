@@ -22,7 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
-import type { ScheduleItem, SelectOption } from '@/lib/types/monitor'
+import type { ScheduleItem } from '@/lib/types/monitor'
 
 // Excel列名到字段名的映射
 const EXCEL_COLUMN_MAPPING: Record<string, keyof ScheduleItem> = {
@@ -47,14 +47,6 @@ const EXCEL_COLUMN_MAPPING: Record<string, keyof ScheduleItem> = {
 
 // 必填字段
 const REQUIRED_FIELDS: (keyof ScheduleItem)[] = [
-  'expectedPublishDate',
-  'contentPrimaryCategory',
-  'contentSecondaryCategory',
-  'language',
-  'dramaName',
-  'copyrightOwner',
-  'expectedPublishChannel',
-  'expectedOperator',
   'videoId',
 ]
 
@@ -71,29 +63,12 @@ interface ExcelImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImport: (items: ScheduleItem[]) => void
-  // 用于验证的选项列表
-  contentPrimaryOptions: SelectOption[]
-  contentSecondaryOptions: SelectOption[]
-  languageOptions: SelectOption[]
-  channelOptions: SelectOption[]
-  operatorOptions: SelectOption[]
-  copyrightStatusOptions: SelectOption[]
-  auditStatusOptions: SelectOption[]
-  auditConclusionOptions: SelectOption[]
 }
 
 export function ExcelImportDialog({
   open,
   onOpenChange,
   onImport,
-  contentPrimaryOptions,
-  contentSecondaryOptions,
-  languageOptions,
-  channelOptions,
-  operatorOptions,
-  copyrightStatusOptions,
-  auditStatusOptions,
-  auditConclusionOptions,
 }: ExcelImportDialogProps) {
   const [file, setFile] = React.useState<File | null>(null)
   const [parseResults, setParseResults] = React.useState<ImportResult[]>([])
@@ -120,17 +95,7 @@ export function ExcelImportDialog({
   // 验证单行数据
   const validateRow = (
     rowData: Record<string, unknown>,
-    rowIndex: number,
-    validOptions: {
-      contentPrimary: string[]
-      contentSecondary: string[]
-      language: string[]
-      channel: string[]
-      operator: string[]
-      copyrightStatus: string[]
-      auditStatus: string[]
-      auditConclusion: string[]
-    }
+    rowIndex: number
   ): ImportResult => {
     const errors: string[] = []
     const warnings: string[] = []
@@ -142,11 +107,11 @@ export function ExcelImportDialog({
       if (value !== undefined && value !== null && value !== '') {
         // 特殊处理布尔值
         if (field === 'isYPPPassed') {
-          data[field] = value === '是' || value === true || value === 'TRUE' || value === 1
+          ;(data as Record<string, unknown>)[field] = value === '是' || value === true || value === 'TRUE' || value === 1
         } else if (field === 'actualPublishDate' || field === 'auditDate') {
-          data[field] = value ? String(value) : null
+          ;(data as Record<string, unknown>)[field] = value ? String(value) : null
         } else {
-          data[field] = String(value)
+          ;(data as Record<string, unknown>)[field] = String(value)
         }
       }
     })
@@ -156,54 +121,6 @@ export function ExcelImportDialog({
       const value = data[field]
       if (value === undefined || value === null || value === '') {
         errors.push(`缺少必填字段: ${Object.keys(EXCEL_COLUMN_MAPPING).find(k => EXCEL_COLUMN_MAPPING[k] === field)}`)
-      }
-    })
-
-    // 验证选项值是否在允许范围内
-    if (data.contentPrimaryCategory && !validOptions.contentPrimary.includes(data.contentPrimaryCategory)) {
-      warnings.push(`内容一级分类 "${data.contentPrimaryCategory}" 不在预设选项中`)
-    }
-    if (data.contentSecondaryCategory && !validOptions.contentSecondary.includes(data.contentSecondaryCategory)) {
-      warnings.push(`内容二级分类 "${data.contentSecondaryCategory}" 不在预设选项中`)
-    }
-    if (data.language && !validOptions.language.includes(data.language)) {
-      warnings.push(`语种 "${data.language}" 不在预设选项中`)
-    }
-    if (data.expectedPublishChannel && !validOptions.channel.includes(data.expectedPublishChannel)) {
-      warnings.push(`预计发布频道 "${data.expectedPublishChannel}" 不在预设选项中`)
-    }
-    if (data.expectedOperator && !validOptions.operator.includes(data.expectedOperator)) {
-      warnings.push(`预计负责运营人员 "${data.expectedOperator}" 不在预设选项中`)
-    }
-
-    // 验证发布状态
-    if (data.publishStatus && !['已发布', '未发布'].includes(data.publishStatus)) {
-      errors.push(`发布状态 "${data.publishStatus}" 无效，应为 "已发布" 或 "未发布"`)
-    }
-
-    // 验证审核状态
-    if (data.auditStatus && !['未审核', '已审核', '待审核'].includes(data.auditStatus)) {
-      warnings.push(`审核状态 "${data.auditStatus}" 不在预设选项中`)
-    }
-
-    // 验证审核结论
-    if (data.auditConclusion && !['通过', '未通过'].includes(data.auditConclusion)) {
-      warnings.push(`审核结论 "${data.auditConclusion}" 不在预设选项中`)
-    }
-
-    // 验证日期格式
-    const dateFields = ['expectedPublishDate', 'actualPublishDate', 'auditDate'] as const
-    dateFields.forEach((field) => {
-      const value = data[field]
-      if (value && typeof value === 'string') {
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-        if (!dateRegex.test(value) && !isNaN(Date.parse(value))) {
-          // 尝试转换日期格式
-          const date = new Date(value)
-          data[field] = date.toISOString().split('T')[0]
-        } else if (!dateRegex.test(value)) {
-          errors.push(`日期格式错误: ${field} = "${value}"，应为 YYYY-MM-DD`)
-        }
       }
     })
 
@@ -231,22 +148,10 @@ export function ExcelImportDialog({
       
       // 转换为JSON
       const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet)
-      
-      // 有效的选项值列表
-      const validOptions = {
-        contentPrimary: contentPrimaryOptions.map(o => o.value),
-        contentSecondary: contentSecondaryOptions.map(o => o.value),
-        language: languageOptions.map(o => o.value),
-        channel: channelOptions.map(o => o.value),
-        operator: operatorOptions.map(o => o.value),
-        copyrightStatus: copyrightStatusOptions.map(o => o.value),
-        auditStatus: auditStatusOptions.map(o => o.value),
-        auditConclusion: auditConclusionOptions.map(o => o.value),
-      }
 
       // 验证每一行数据
       const results: ImportResult[] = jsonData.map((row, index) => 
-        validateRow(row, index + 2, validOptions) // Excel行号从2开始（第1行是表头）
+        validateRow(row, index + 2) // Excel行号从2开始（第1行是表头）
       )
 
       setParseResults(results)
@@ -352,16 +257,10 @@ export function ExcelImportDialog({
                 <div className="grid grid-cols-3 gap-2 text-muted-foreground">
                   {Object.keys(EXCEL_COLUMN_MAPPING).map((col) => (
                     <div key={col} className="flex items-center gap-1">
-                      {REQUIRED_FIELDS.includes(EXCEL_COLUMN_MAPPING[col]) && (
-                        <span className="text-destructive">*</span>
-                      )}
                       <span>{col}</span>
                     </div>
                   ))}
                 </div>
-                <p className="mt-2 text-muted-foreground">
-                  <span className="text-destructive">*</span> 为必填字段
-                </p>
               </CardContent>
             </Card>
           </div>

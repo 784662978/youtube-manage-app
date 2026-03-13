@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import dayjs from 'dayjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,77 +14,285 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { apiClient } from '@/lib/api-client'
 import type {
+  WarningResponse,
   MissingPublishTimeAlert,
-  VideoIdAnomalyAlert,
+  VideoIdAnomalyWebAlert,
+  VideoIdAnomalyDbAlert,
   ViewCountAnomalyAlert,
 } from '@/lib/types/monitor'
 
-// 模拟数据
-const mockMissingPublishTimeAlerts: MissingPublishTimeAlert[] = [
-  {
-    videoId: 'vid_001',
-    dramaName: '示例剧A',
-    publishChannel: '频道1',
-    actualPublishDate: null,
-    operator: '张三',
-  },
-  {
-    videoId: 'vid_002',
-    dramaName: '示例剧B',
-    publishChannel: '频道2',
-    actualPublishDate: null,
-    operator: '李四',
-  },
-]
+const DEFAULT_PAGE_SIZE = 20
 
-const mockVideoIdAnomalyAlerts: VideoIdAnomalyAlert[] = [
-  {
-    type: 'web_has_db_not',
-    videoId: 'vid_003',
-    dramaName: '示例剧C',
-    publishChannel: '频道1',
-    actualPublishDate: '2026-01-10',
-    operator: '王五',
-  },
-  {
-    type: 'db_has_web_not',
-    videoId: 'vid_005',
-    channelLink: 'https://youtube.com/...',
-    actualPublishTime: '2026-01-12 14:00',
-  },
-]
+// 通用分页表格组件
+interface PaginatedTableProps<T> {
+  data: T[]
+  isLoading: boolean
+  columns: { key: keyof T; header: string; render?: (value: unknown, item: T) => React.ReactNode }[]
+  pageSize?: number
+}
 
-const mockViewCountAnomalyAlerts: ViewCountAnomalyAlert[] = [
-  {
-    videoId: 'vid_004',
-    dramaName: '示例剧D',
-    publishChannel: '频道2',
-    actualPublishTime: '10:00',
-    actualPublishDate: '2026-01-08',
-    operator: '赵六',
-    viewCount: 0,
-    viewDate: '2026-01-09',
-  },
-]
+function PaginatedTable<T extends object>({
+  data,
+  isLoading,
+  columns,
+  pageSize = DEFAULT_PAGE_SIZE,
+}: PaginatedTableProps<T>) {
+  const [page, setPage] = React.useState(1)
+  const totalPages = Math.ceil(data.length / pageSize)
+  const startIndex = (page - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const currentData = data.slice(startIndex, endIndex)
+
+  // 数据变化时重置页码
+  React.useEffect(() => {
+    setPage(1)
+  }, [data.length])
+
+  const handlePrevPage = () => {
+    setPage((p) => Math.max(1, p - 1))
+  }
+
+  const handleNextPage = () => {
+    setPage((p) => Math.min(totalPages, p + 1))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns.map((col) => (
+                <TableHead key={String(col.key)}>{col.header}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex items-center justify-center text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    加载中...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : currentData.length > 0 ? (
+              currentData.map((item, index) => (
+                <TableRow key={startIndex + index}>
+                  {columns.map((col) => (
+                    <TableCell key={String(col.key)}>
+                      {col.render ? col.render(item[col.key], item) : (item[col.key] as React.ReactNode)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-8">
+                  暂无告警
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* 分页控制 */}
+      {!isLoading && data.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            共 {data.length} 条，第 {page}/{totalPages || 1} 页
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={handlePrevPage}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              上一页
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={handleNextPage}
+            >
+              下一页
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function EffectMonitorPage() {
-  const [dateStart, setDateStart] = React.useState('')
-  const [dateEnd, setDateEnd] = React.useState('')
+  const [dateStart, setDateStart] = React.useState(dayjs().subtract(1, 'day').format('YYYY-MM-DD'))
+  const [dateEnd, setDateEnd] = React.useState(dayjs().format('YYYY-MM-DD'))
+  const [isLoading, setIsLoading] = React.useState(false)
+
+  // 告警数据
+  const [rule1Data, setRule1Data] = React.useState<MissingPublishTimeAlert[]>([])
+  const [rule21Data, setRule21Data] = React.useState<VideoIdAnomalyWebAlert[]>([])
+  const [rule22Data, setRule22Data] = React.useState<VideoIdAnomalyDbAlert[]>([])
+  const [rule3Data, setRule3Data] = React.useState<ViewCountAnomalyAlert[]>([])
+
+  // 转换规则1数据
+  const transformRule1Data = (items: WarningResponse['rule1_datas']): MissingPublishTimeAlert[] => {
+    return items.map(item => ({
+      videoId: item.video_id,
+      videoName: item.video_name,
+      publishChannel: item.publish_channel,
+      actualPublishDate: item.actual_publish_date,
+      operator: item.expected_operator,
+    }))
+  }
+
+  // 转换规则2.1数据
+  const transformRule21Data = (items: WarningResponse['rile2_1_datas']): VideoIdAnomalyWebAlert[] => {
+    return items.map(item => ({
+      videoId: item.video_id,
+      videoName: item.video_name,
+      publishChannel: item.publish_channel,
+      actualPublishDate: item.actual_publish_date,
+      operator: item.expected_operator,
+    }))
+  }
+
+  // 转换规则2.2数据
+  const transformRule22Data = (items: WarningResponse['rile2_2_datas']): VideoIdAnomalyDbAlert[] => {
+    return items.map(item => ({
+      videoId: item.video_id,
+      publishUrl: item.publish_url,
+      actualPublishTime: item.actual_publish_time,
+    }))
+  }
+
+  // 转换规则3数据
+  const transformRule3Data = (items: WarningResponse['rule3_datas']): ViewCountAnomalyAlert[] => {
+    return items.map(item => ({
+      videoId: item.video_id,
+      videoName: item.video_name,
+      publishChannel: item.publish_channel,
+      publishTime: item.publish_time,
+      operator: item.expected_operator,
+      viewCount: item.view_count,
+      viewDate: item.view_date,
+    }))
+  }
+
+  // 查询告警数据
+  const fetchWarnings = React.useCallback(async () => {
+    if (!dateStart || !dateEnd) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams({
+        date_start: dateStart,
+        date_end: dateEnd,
+      })
+
+      const { response } = await apiClient.get<{ response: WarningResponse }>(
+        `/publishPlan/warning?${params.toString()}`
+      )
+
+      // 转换数据
+      setRule1Data(transformRule1Data(response.rule1_datas || []))
+      setRule21Data(transformRule21Data(response.rile2_1_datas || []))
+      setRule22Data(transformRule22Data(response.rile2_2_datas || []))
+      setRule3Data(transformRule3Data(response.rule3_datas || []))
+    } catch (error) {
+      console.error('Failed to fetch warnings:', error)
+      // 清空数据
+      setRule1Data([])
+      setRule21Data([])
+      setRule22Data([])
+      setRule3Data([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [dateStart, dateEnd])
+
+  // 初始加载
+  React.useEffect(() => {
+    fetchWarnings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleQuery = () => {
-    // TODO: 实现查询逻辑
-    console.log('Query alerts for:', dateStart, dateEnd)
+    fetchWarnings()
   }
 
   const handleQuickDate = (days: number) => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(end.getDate() - days + 1)
-    setDateStart(start.toISOString().split('T')[0])
-    setDateEnd(end.toISOString().split('T')[0])
+    const end = dayjs()
+    const start = end.subtract(days - 1, 'day')
+    setDateStart(start.format('YYYY-MM-DD'))
+    setDateEnd(end.format('YYYY-MM-DD'))
   }
+
+  const rule2Total = rule21Data.length + rule22Data.length
+
+  // 规则1表格列定义
+  const rule1Columns: { key: keyof MissingPublishTimeAlert; header: string; render?: (value: unknown, item: MissingPublishTimeAlert) => React.ReactNode }[] = [
+    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { key: 'videoName', header: '剧名称' },
+    { key: 'publishChannel', header: '发布频道' },
+    { key: 'actualPublishDate', header: '实际发布日期', render: (value) => (value as string | null) || '—' },
+    { key: 'operator', header: '预计负责运营人员' },
+  ]
+
+  // 规则2.1表格列定义
+  const rule21Columns: { key: keyof VideoIdAnomalyWebAlert; header: string; render?: (value: unknown, item: VideoIdAnomalyWebAlert) => React.ReactNode }[] = [
+    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { key: 'videoName', header: '剧名称' },
+    { key: 'publishChannel', header: '发布频道' },
+    { key: 'actualPublishDate', header: '实际发布日期' },
+    { key: 'operator', header: '预计负责运营人员' },
+  ]
+
+  // 规则2.2表格列定义
+  const rule22Columns: { key: keyof VideoIdAnomalyDbAlert; header: string; render?: (value: unknown, item: VideoIdAnomalyDbAlert) => React.ReactNode }[] = [
+    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { 
+      key: 'publishUrl', 
+      header: '发布频道链接', 
+      render: (value) => (
+        <a
+          href={value as string}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline break-all"
+        >
+          {value as string}
+        </a>
+      ) 
+    },
+    { key: 'actualPublishTime', header: '实际发布时间' },
+  ]
+
+  // 规则3表格列定义
+  const rule3Columns: { key: keyof ViewCountAnomalyAlert; header: string; render?: (value: unknown, item: ViewCountAnomalyAlert) => React.ReactNode }[] = [
+    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { key: 'videoName', header: '剧名称' },
+    { key: 'publishChannel', header: '发布频道' },
+    { key: 'publishTime', header: '发布时间' },
+    { key: 'operator', header: '预计负责运营人员' },
+    { 
+      key: 'viewCount', 
+      header: '观看量', 
+      render: (value) => <Badge variant="destructive">{value as number}</Badge> 
+    },
+    { key: 'viewDate', header: '观看日期' },
+  ]
 
   return (
     <div className="space-y-6 py-4">
@@ -94,26 +303,27 @@ export function EffectMonitorPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">统计日期范围</span>
-              <Input
-                type="date"
-                className="w-36"
-                value={dateStart}
-                onChange={(e) => setDateStart(e.target.value)}
-              />
-              <span className="text-muted-foreground">—</span>
-              <Input
-                type="date"
-                className="w-36"
-                value={dateEnd}
-                onChange={(e) => setDateEnd(e.target.value)}
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">统计日期范围</span>
+            <Input
+              type="date"
+              className="w-36 cursor-pointer"
+              value={dateStart}
+              onChange={(e) => setDateStart(e.target.value)}
+            />
+            <span className="text-muted-foreground">—</span>
+            <Input
+              type="date"
+              className="w-36 cursor-pointer"
+              value={dateEnd}
+              onChange={(e) => setDateEnd(e.target.value)}
+            />
+          </div>
             <Button variant="outline" size="sm" onClick={() => handleQuickDate(2)}>
               近两天
             </Button>
-            <Button size="sm" onClick={handleQuery}>
+            <Button size="sm" onClick={handleQuery} disabled={isLoading}>
+              {isLoading ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
               查询
             </Button>
           </div>
@@ -133,43 +343,16 @@ export function EffectMonitorPage() {
                 规则一：发布时间填写缺失
               </CardTitle>
               <Badge variant="destructive">
-                共有告警信息 {mockMissingPublishTimeAlerts.length} 条
+                共有告警信息 {rule1Data.length} 条
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>视频唯一ID</TableHead>
-                    <TableHead>剧名称</TableHead>
-                    <TableHead>发布频道</TableHead>
-                    <TableHead>实际发布日期</TableHead>
-                    <TableHead>预计负责运营人员</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockMissingPublishTimeAlerts.length > 0 ? (
-                    mockMissingPublishTimeAlerts.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-mono text-xs">{item.videoId}</TableCell>
-                        <TableCell>{item.dramaName}</TableCell>
-                        <TableCell>{item.publishChannel}</TableCell>
-                        <TableCell>{item.actualPublishDate || '—'}</TableCell>
-                        <TableCell>{item.operator}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        暂无告警
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <PaginatedTable
+              data={rule1Data}
+              isLoading={isLoading}
+              columns={rule1Columns}
+            />
           </CardContent>
         </Card>
 
@@ -182,76 +365,29 @@ export function EffectMonitorPage() {
                 规则二：视频唯一ID异常
               </CardTitle>
               <Badge variant="destructive">
-                共有告警信息 {mockVideoIdAnomalyAlerts.length} 条
+                共有告警信息 {rule2Total} 条
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-4 space-y-4">
+          <CardContent className="pt-4 space-y-6">
             {/* 网页有 / 数据库没有 */}
             <div className="space-y-3">
-              <h4 className="text-sm font-medium">网页有 / 数据库没有</h4>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>视频唯一ID</TableHead>
-                      <TableHead>剧名称</TableHead>
-                      <TableHead>发布频道</TableHead>
-                      <TableHead>实际发布日期</TableHead>
-                      <TableHead>预计负责运营人员</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockVideoIdAnomalyAlerts
-                      .filter((item) => item.type === 'web_has_db_not')
-                      .map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-mono text-xs">{item.videoId}</TableCell>
-                          <TableCell>{item.dramaName}</TableCell>
-                          <TableCell>{item.publishChannel}</TableCell>
-                          <TableCell>{item.actualPublishDate}</TableCell>
-                          <TableCell>{item.operator}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <h4 className="text-sm font-medium">网页有 / 数据库没有 ({rule21Data.length}条)</h4>
+              <PaginatedTable
+                data={rule21Data}
+                isLoading={isLoading}
+                columns={rule21Columns}
+              />
             </div>
 
             {/* 数据库有 / 网页没有 */}
             <div className="space-y-3">
-              <h4 className="text-sm font-medium">数据库有 / 网页没有</h4>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>视频唯一ID</TableHead>
-                      <TableHead>发布频道链接</TableHead>
-                      <TableHead>实际发布时间</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockVideoIdAnomalyAlerts
-                      .filter((item) => item.type === 'db_has_web_not')
-                      .map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-mono text-xs">{item.videoId}</TableCell>
-                          <TableCell>
-                            <a
-                              href={item.channelLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              {item.channelLink}
-                            </a>
-                          </TableCell>
-                          <TableCell>{item.actualPublishTime}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <h4 className="text-sm font-medium">数据库有 / 网页没有 ({rule22Data.length}条)</h4>
+              <PaginatedTable
+                data={rule22Data}
+                isLoading={isLoading}
+                columns={rule22Columns}
+              />
             </div>
           </CardContent>
         </Card>
@@ -265,51 +401,16 @@ export function EffectMonitorPage() {
                 规则三：播放量异常
               </CardTitle>
               <Badge variant="destructive">
-                共有告警信息 {mockViewCountAnomalyAlerts.length} 条
+                共有告警信息 {rule3Data.length} 条
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>视频唯一ID</TableHead>
-                    <TableHead>剧名称</TableHead>
-                    <TableHead>发布频道</TableHead>
-                    <TableHead>实际发布时间</TableHead>
-                    <TableHead>实际发布日期</TableHead>
-                    <TableHead>预计负责运营人员</TableHead>
-                    <TableHead>观看量</TableHead>
-                    <TableHead>观看日期</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockViewCountAnomalyAlerts.length > 0 ? (
-                    mockViewCountAnomalyAlerts.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-mono text-xs">{item.videoId}</TableCell>
-                        <TableCell>{item.dramaName}</TableCell>
-                        <TableCell>{item.publishChannel}</TableCell>
-                        <TableCell>{item.actualPublishTime}</TableCell>
-                        <TableCell>{item.actualPublishDate}</TableCell>
-                        <TableCell>{item.operator}</TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">{item.viewCount}</Badge>
-                        </TableCell>
-                        <TableCell>{item.viewDate}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                        暂无告警
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <PaginatedTable
+              data={rule3Data}
+              isLoading={isLoading}
+              columns={rule3Columns}
+            />
           </CardContent>
         </Card>
       </div>

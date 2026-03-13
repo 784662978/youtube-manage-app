@@ -80,6 +80,95 @@ export interface ScheduleFilter {
   operatorModification?: string
 }
 
+// API 筛选参数 (对应后端接口)
+export interface ScheduleSearchParams {
+  expected_publish_date_start?: string
+  expected_publish_date_end?: string
+  actual_publish_date_start?: string
+  actual_publish_date_end?: string
+  review_date?: string
+  video_name?: string
+  video_id?: string
+  content_category_level1?: string
+  content_category_level2?: string
+  language?: string
+  copyright_owner?: string
+  expected_publish_channel?: string
+  expected_operator?: string
+  is_ypp_approved?: string
+  publish_status?: string
+  copyright_status?: string
+  review_status?: string
+  review_result?: string
+  operation_revision_result?: string
+  page?: number
+  page_size?: number
+}
+
+// API 排期项响应类型
+export interface ScheduleItemResponse {
+  id: string
+  expected_publish_date: string
+  actual_publish_date: string | null
+  content_category_level1: string
+  content_category_level2: string
+  language: string
+  is_ypp_approved: number // 0 或 1
+  publish_status: number // 0 或 1
+  copyright_status: number // 0 或 1
+  video_name: string
+  copyright_owner: string
+  expected_publish_channel: string
+  expected_operator: string
+  video_id: string
+  review_status: number // 0, 1, 2
+  review_result: number | null // 0, 1
+  review_date: string | null
+  operation_revision_result: number | null // 0, 1
+}
+
+// API 排期列表响应类型
+export interface ScheduleListResponse {
+  page: number
+  pageCount: number
+  dataCount: number
+  pageSize: number
+  data: ScheduleItemResponse[]
+}
+
+// 分页信息
+export interface Pagination {
+  page: number
+  pageSize: number
+  total?: number
+}
+
+// 导入数据请求类型
+export interface ImportDataItem {
+  id?: string
+  expected_publish_date: string
+  actual_publish_date: string | null
+  content_category_level1: string
+  content_category_level2: string
+  language: string
+  is_ypp_approved: number // 0 或 1
+  publish_status: number // 0 或 1
+  copyright_status: number // 0 或 1
+  video_name: string
+  copyright_owner: string
+  expected_publish_channel: string
+  expected_operator: string
+  video_id: string
+  review_status: number // 0, 1, 2
+  review_result: number | null // 0, 1
+  review_date: string | null
+  operation_revision_result: number | null // 0, 1
+}
+
+export interface ImportRequest {
+  datas: ImportDataItem[]
+}
+
 // 运营效果监控相关类型
 
 // 告警规则
@@ -90,10 +179,54 @@ export interface AlertRule {
   type: 'missing_publish_time' | 'video_id_anomaly' | 'view_count_anomaly'
 }
 
-// 告警项目 - 发布时间缺失
+// API 告警响应类型 - 规则1：发布时间填写缺失
+export interface WarningRule1Item {
+  video_id: string
+  video_name: string
+  publish_channel: string
+  actual_publish_date: string | null
+  expected_operator: string
+}
+
+// API 告警响应类型 - 规则2.1：网页有/数据库没有
+export interface WarningRule21Item {
+  video_id: string
+  video_name: string
+  publish_channel: string
+  actual_publish_date: string
+  expected_operator: string
+}
+
+// API 告警响应类型 - 规则2.2：数据库有/网页没有
+export interface WarningRule22Item {
+  video_id: string
+  publish_url: string
+  actual_publish_time: string
+}
+
+// API 告警响应类型 - 规则3：播放量异常
+export interface WarningRule3Item {
+  video_id: string
+  video_name: string
+  publish_channel: string
+  publish_time: string
+  expected_operator: string
+  view_count: number
+  view_date: string
+}
+
+// API 告警响应
+export interface WarningResponse {
+  rule1_datas: WarningRule1Item[]
+  rile2_1_datas: WarningRule21Item[]
+  rile2_2_datas: WarningRule22Item[]
+  rule3_datas: WarningRule3Item[]
+}
+
+// 告警项目 - 发布时间缺失 (前端使用)
 export interface MissingPublishTimeAlert {
   videoId: string
-  dramaName: string
+  videoName: string
   publishChannel: string
   actualPublishDate: string | null
   operator: string
@@ -120,25 +253,28 @@ export interface ScheduleSummaryReportResponse {
   }[]
 }
 
-// 告警项目 - 视频ID异常
-export interface VideoIdAnomalyAlert {
-  type: 'web_has_db_not' | 'db_has_web_not' // 网页有/数据库没有 或 数据库有/网页没有
+// 告警项目 - 视频ID异常 - 网页有/数据库没有 (前端使用)
+export interface VideoIdAnomalyWebAlert {
   videoId: string
-  dramaName?: string
-  publishChannel?: string
-  actualPublishDate?: string | null
-  operator?: string
-  channelLink?: string
-  actualPublishTime?: string
+  videoName: string
+  publishChannel: string
+  actualPublishDate: string
+  operator: string
 }
 
-// 告警项目 - 播放量异常
+// 告警项目 - 视频ID异常 - 数据库有/网页没有 (前端使用)
+export interface VideoIdAnomalyDbAlert {
+  videoId: string
+  publishUrl: string
+  actualPublishTime: string
+}
+
+// 告警项目 - 播放量异常 (前端使用)
 export interface ViewCountAnomalyAlert {
   videoId: string
-  dramaName: string
+  videoName: string
   publishChannel: string
-  actualPublishTime: string
-  actualPublishDate: string
+  publishTime: string
   operator: string
   viewCount: number
   viewDate: string

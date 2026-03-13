@@ -210,7 +210,7 @@ export function DateRangePicker({ value, onChange, className }: DateRangePickerP
                   type="date"
                   value={tempRange.start}
                   onChange={(e) => setTempRange({ ...tempRange, start: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer"
                 />
               </div>
               <div>
@@ -219,7 +219,7 @@ export function DateRangePicker({ value, onChange, className }: DateRangePickerP
                   type="date"
                   value={tempRange.end}
                   onChange={(e) => setTempRange({ ...tempRange, end: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer"
                 />
               </div>
             </div>

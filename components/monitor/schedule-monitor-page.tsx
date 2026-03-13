@@ -8,7 +8,8 @@ import { ScheduleFilterBar } from './schedule-filter'
 import { ScheduleTable } from './schedule-table'
 import { ExcelImportDialog } from './excel-import-dialog'
 import { apiClient } from '@/lib/api-client'
-import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse } from '@/lib/types/monitor'
+import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem } from '@/lib/types/monitor'
+import { Notification } from '@/components/ui/notification'
 
 // 模拟下拉选项数据
 const defaultSelectOptions = {
@@ -27,8 +28,19 @@ const defaultSelectOptions = {
   language: [
     { value: '中文', label: '中文' },
     { value: '英文', label: '英文' },
+    { value: '印地语', label: '印地语' },
+    { value: '西班牙语', label: '西班牙语' },
+    { value: '法语', label: '法语' },
+    { value: '阿拉伯语', label: '阿拉伯语' },
+    { value: '孟加拉语', label: '孟加拉语' },
+    { value: '俄语', label: '俄语' },
+    { value: '葡萄牙语', label: '葡萄牙语' },
     { value: '日语', label: '日语' },
+    { value: '德语', label: '德语' },
     { value: '韩语', label: '韩语' },
+    { value: '越南语', label: '越南语' },
+    { value: '泰语', label: '泰语' },
+    { value: '意大利语', label: '意大利语' },
   ],
   ypp: [
     { value: '1', label: '是' },
@@ -189,20 +201,206 @@ function exportToExcel(data: ScheduleItem[], filename: string = '排期明细') 
 }
 
 export function ScheduleMonitorPage() {
-  const [filter, setFilter] = React.useState<ScheduleFilter>({
-    expectedPublishDateStart: dayjs().startOf('month').format('YYYY-MM-DD'),
-    expectedPublishDateEnd: dayjs().endOf('month').format('YYYY-MM-DD'),
+  // 排期概况的独立日期范围
+  const [summaryDateRange, setSummaryDateRange] = React.useState({
+    start: dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().endOf('month').format('YYYY-MM-DD'),
   })
-  const [data, setData] = React.useState<ScheduleItem[]>(mockScheduleData)
+  
+  // 筛选条件（用于明细排期表）
+  const [filter, setFilter] = React.useState<ScheduleFilter>({})
+  
+  // 实际用于查询的筛选条件（只在点击搜索时更新）
+  const [searchFilter, setSearchFilter] = React.useState<ScheduleFilter>({})
+  
+  const [data, setData] = React.useState<ScheduleItem[]>([])
   const [summary, setSummary] = React.useState<ScheduleSummaryProps>(defaultSummary)
   const [showImportDialog, setShowImportDialog] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isTableLoading, setIsTableLoading] = React.useState(false)
+  const [isExporting, setIsExporting] = React.useState(false)
+  const [operatorOptions, setOperatorOptions] = React.useState<SelectOption[]>(defaultSelectOptions.operator)
+  const [pagination, setPagination] = React.useState<Pagination>({
+    page: 1,
+    pageSize: 20,
+    total: 0,
+  })
+  const [notification, setNotification] = React.useState<{
+    isVisible: boolean
+    message: string
+    type: 'success' | 'error'
+  }>({
+    isVisible: false,
+    message: '',
+    type: 'success',
+  })
+
+  // 将筛选条件映射为API参数
+  const buildSearchParams = (filter: ScheduleFilter, page: number, pageSize: number): ScheduleSearchParams => {
+    const params: ScheduleSearchParams = {
+      page,
+      page_size: pageSize,
+    }
+
+    if (filter.expectedPublishDateStart) {
+      params.expected_publish_date_start = filter.expectedPublishDateStart
+    }
+    if (filter.expectedPublishDateEnd) {
+      params.expected_publish_date_end = filter.expectedPublishDateEnd
+    }
+    if (filter.actualPublishDateStart) {
+      params.actual_publish_date_start = filter.actualPublishDateStart
+    }
+    if (filter.actualPublishDateEnd) {
+      params.actual_publish_date_end = filter.actualPublishDateEnd
+    }
+    if (filter.contentPrimaryCategory) {
+      params.content_category_level1 = filter.contentPrimaryCategory
+    }
+    if (filter.contentSecondaryCategory) {
+      params.content_category_level2 = filter.contentSecondaryCategory
+    }
+    if (filter.language) {
+      params.language = filter.language
+    }
+    if (filter.copyrightOwner) {
+      params.copyright_owner = filter.copyrightOwner
+    }
+    if (filter.expectedPublishChannel) {
+      params.expected_publish_channel = filter.expectedPublishChannel
+    }
+    if (filter.expectedOperator) {
+      params.expected_operator = filter.expectedOperator
+    }
+    if (filter.isYPPPassed) {
+      params.is_ypp_approved = filter.isYPPPassed
+    }
+    if (filter.publishStatus) {
+      params.publish_status = filter.publishStatus
+    }
+    if (filter.copyrightStatus) {
+      params.copyright_status = filter.copyrightStatus
+    }
+    if (filter.auditStatus) {
+      params.review_status = filter.auditStatus
+    }
+    if (filter.auditConclusion) {
+      params.review_result = filter.auditConclusion
+    }
+    if (filter.auditDate) {
+      params.review_date = filter.auditDate
+    }
+    if (filter.operatorModification) {
+      params.operation_revision_result = filter.operatorModification
+    }
+    if (filter.dramaNames && filter.dramaNames.length > 0) {
+      params.video_name = filter.dramaNames[0] // 简化处理，只取第一个
+    }
+    if (filter.videoIds && filter.videoIds.length > 0) {
+      params.video_id = filter.videoIds[0] // 简化处理，只取第一个
+    }
+
+    return params
+  }
+
+  // 将API响应转换为本地数据格式
+  const transformScheduleItem = (item: ScheduleItemResponse): ScheduleItem => {
+    return {
+      id: item.id,
+      expectedPublishDate: item.expected_publish_date,
+      actualPublishDate: item.actual_publish_date,
+      contentPrimaryCategory: item.content_category_level1,
+      contentSecondaryCategory: item.content_category_level2,
+      language: item.language,
+      dramaName: item.video_name,
+      copyrightOwner: item.copyright_owner,
+      expectedPublishChannel: item.expected_publish_channel,
+      isYPPPassed: item.is_ypp_approved === 1,
+      expectedOperator: item.expected_operator,
+      publishStatus: item.publish_status === 1 ? '已发布' : '未发布',
+      copyrightStatus: item.copyright_status === 1 ? '正常' : '禁播',
+      videoId: item.video_id,
+      auditStatus: item.review_status === 0 ? '未审核' : item.review_status === 1 ? '已审核' : '待审核',
+      auditConclusion: item.review_result === 1 ? '通过' : item.review_result === 0 ? '未通过' : null,
+      auditDate: item.review_date,
+      operatorModification: item.operation_revision_result === 1 ? '已修改' : item.operation_revision_result === 0 ? '未修改' : null,
+    }
+  }
+
+  // 将本地数据转换为API导入格式
+  const transformToImportData = (item: ScheduleItem): ImportDataItem => {
+    return {
+      id: item.id,
+      expected_publish_date: item.expectedPublishDate,
+      actual_publish_date: item.actualPublishDate,
+      content_category_level1: item.contentPrimaryCategory,
+      content_category_level2: item.contentSecondaryCategory,
+      language: item.language,
+      is_ypp_approved: item.isYPPPassed ? 1 : 0,
+      publish_status: item.publishStatus === '已发布' ? 1 : 0,
+      copyright_status: item.copyrightStatus === '正常' ? 1 : 0,
+      video_name: item.dramaName,
+      copyright_owner: item.copyrightOwner,
+      expected_publish_channel: item.expectedPublishChannel,
+      expected_operator: item.expectedOperator,
+      video_id: item.videoId,
+      review_status: item.auditStatus === '未审核' ? 0 : item.auditStatus === '已审核' ? 1 : 2,
+      review_result: item.auditConclusion === '通过' ? 1 : item.auditConclusion === '未通过' ? 0 : null,
+      review_date: item.auditDate,
+      operation_revision_result: item.operatorModification === '已修改' ? 1 : item.operatorModification === '未修改' ? 0 : 0,
+    }
+  }
+
+  // 获取预计负责运营人员列表
+  const fetchOperators = React.useCallback(async () => {
+    try {
+      const { response } = await apiClient.get<{ response: string[] }>('/publishPlan/expected-operator')
+      // 将字符串数组转换为 SelectOption 格式
+      const options = response.map(name => ({
+        value: name,
+        label: name
+      }))
+      setOperatorOptions(options)
+    } catch (error) {
+      console.error('Failed to fetch operators:', error)
+      // 失败时使用默认数据
+      setOperatorOptions(defaultSelectOptions.operator)
+    }
+  }, [])
+
+  // 获取排期明细列表
+  const fetchScheduleList = React.useCallback(async () => {
+    setIsTableLoading(true)
+    try {
+      const params = buildSearchParams(searchFilter, pagination.page, pagination.pageSize)
+      console.log('params', params)
+      const { response } = await apiClient.get<{ response: ScheduleListResponse }>('/publishPlan/search', { ...params })
+      
+      // 转换数据格式
+      const scheduleItems = response.data.map(transformScheduleItem)
+      setData(scheduleItems)
+      
+      // 更新分页信息
+      setPagination(prev => ({ 
+        ...prev, 
+        page: response.page,
+        pageSize: response.pageSize,
+        total: response.dataCount 
+      }))
+    } catch (error) {
+      console.error('Failed to fetch schedule list:', error)
+      // 失败时使用模拟数据
+      setData(mockScheduleData)
+    } finally {
+      setIsTableLoading(false)
+    }
+  }, [searchFilter, pagination.page, pagination.pageSize])
 
   const fetchSummary = React.useCallback(async () => {
     setIsLoading(true)
     try {
-      const startDate = filter.expectedPublishDateStart || dayjs().startOf('month').format('YYYY-MM-DD')
-      const endDate = filter.expectedPublishDateEnd || dayjs().endOf('month').format('YYYY-MM-DD')
+      const startDate = summaryDateRange.start || dayjs().startOf('month').format('YYYY-MM-DD')
+      const endDate = summaryDateRange.end || dayjs().endOf('month').format('YYYY-MM-DD')
 
       const params = new URLSearchParams({
         start_date: startDate,
@@ -245,32 +443,96 @@ export function ScheduleMonitorPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [filter.expectedPublishDateStart, filter.expectedPublishDateEnd])
+  }, [summaryDateRange.start, summaryDateRange.end])
 
   React.useEffect(() => {
     fetchSummary()
   }, [fetchSummary])
 
+  // 组件挂载时获取运营人员列表和排期明细
+  React.useEffect(() => {
+    fetchOperators()
+    fetchScheduleList()
+  }, [fetchOperators, fetchScheduleList])
+
   const handleSearch = () => {
-    // TODO: 实现搜索逻辑（对接API）
-    console.log('Search with filter:', filter)
-    fetchSummary()
+    // 更新查询条件，触发明细排期表搜索
+    setSearchFilter(filter)
+    // 重置到第一页
+    setPagination(prev => ({ ...prev, page: 1 }))
   }
 
-  const handleDelete = (id: string) => {
-    setData(data.filter((item) => item.id !== id))
+  // 处理分页变化
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, page }))
   }
 
-  const handleExport = () => {
-    if (data.length === 0) {
-      alert('暂无数据可导出')
-      return
-    }
+  const handleDelete = async (id: string) => {
     try {
-      exportToExcel(data)
+      await apiClient.delete<{ response: boolean }>(`/publishPlan/delete/${id}`)
+      
+      // 显示成功通知
+      setNotification({
+        isVisible: true,
+        message: '删除成功',
+        type: 'success',
+      })
+      
+      // 重新获取明细排期表
+      fetchScheduleList()
+      
+      // 重新获取概况数据
+      fetchSummary()
+    } catch (error) {
+      console.error('Delete failed:', error)
+      
+      // 显示失败通知
+      setNotification({
+        isVisible: true,
+        message: '删除失败，请重试',
+        type: 'error',
+      })
+    }
+  }
+
+  const handleExport = async () => {
+    if (isExporting) return
+    
+    setIsExporting(true)
+    try {
+      // 获取全部数据用于导出（使用较大的pageSize）
+      const params = buildSearchParams(searchFilter, 1, 10000)
+      const { response } = await apiClient.get<{ response: ScheduleListResponse }>('/publishPlan/search', { ...params })
+      
+      if (!response.data || response.data.length === 0) {
+        setNotification({
+          isVisible: true,
+          message: '暂无数据可导出',
+          type: 'error',
+        })
+        return
+      }
+      
+      // 转换数据格式
+      const allData = response.data.map(transformScheduleItem)
+      
+      // 导出Excel
+      exportToExcel(allData)
+      
+      setNotification({
+        isVisible: true,
+        message: `成功导出 ${allData.length} 条数据`,
+        type: 'success',
+      })
     } catch (error) {
       console.error('Export failed:', error)
-      alert('导出失败，请重试')
+      setNotification({
+        isVisible: true,
+        message: '导出失败，请重试',
+        type: 'error',
+      })
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -278,18 +540,54 @@ export function ScheduleMonitorPage() {
     setShowImportDialog(true)
   }
 
-  // 处理日期范围变化
+  // 处理日期范围变化（仅影响排期概况）
   const handleDateRangeChange = (range: DateRange) => {
-    setFilter(prev => ({
-      ...prev,
-      expectedPublishDateStart: range.start,
-      expectedPublishDateEnd: range.end,
-    }))
+    setSummaryDateRange({
+      start: range.start,
+      end: range.end,
+    })
   }
 
   // 处理Excel导入结果
-  const handleImportComplete = (items: ScheduleItem[]) => {
-    setData([...data, ...items])
+  const handleImportComplete = async (items: ScheduleItem[]) => {
+    if (items.length === 0) {
+      return
+    }
+
+    try {
+      // 转换数据格式
+      const importData = items.map(transformToImportData)
+      
+      // 调用导入API
+      await apiClient.post<{ response: boolean }>('/publishPlan/import', {
+        datas: importData
+      })
+
+      // 显示成功通知
+      setNotification({
+        isVisible: true,
+        message: `成功导入 ${items.length} 条数据`,
+        type: 'success',
+      })
+
+      // 关闭导入对话框
+      setShowImportDialog(false)
+
+      // 重新获取明细排期表
+      fetchScheduleList()
+
+      // 重新获取概况数据
+      fetchSummary()
+    } catch (error) {
+      console.error('Import failed:', error)
+      
+      // 显示失败通知
+      setNotification({
+        isVisible: true,
+        message: '导入失败，请重试',
+        type: 'error',
+      })
+    }
   }
 
   return (
@@ -314,7 +612,7 @@ export function ScheduleMonitorPage() {
         copyrightStatusOptions={defaultSelectOptions.copyrightStatus}
         copyrightOwnerOptions={defaultSelectOptions.copyrightOwner}
         channelOptions={defaultSelectOptions.channel}
-        operatorOptions={defaultSelectOptions.operator}
+        operatorOptions={operatorOptions}
         auditStatusOptions={defaultSelectOptions.auditStatus}
         auditConclusionOptions={defaultSelectOptions.auditConclusion}
         modificationOptions={defaultSelectOptions.modification}
@@ -326,6 +624,10 @@ export function ScheduleMonitorPage() {
         onDelete={handleDelete}
         onExport={handleExport}
         onImport={handleImport}
+        isLoading={isTableLoading}
+        isExporting={isExporting}
+        pagination={pagination}
+        onPageChange={handlePageChange}
       />
 
       {/* Excel导入对话框 */}
@@ -333,14 +635,14 @@ export function ScheduleMonitorPage() {
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
         onImport={handleImportComplete}
-        contentPrimaryOptions={defaultSelectOptions.contentPrimary}
-        contentSecondaryOptions={defaultSelectOptions.contentSecondary}
-        languageOptions={defaultSelectOptions.language}
-        channelOptions={defaultSelectOptions.channel}
-        operatorOptions={defaultSelectOptions.operator}
-        copyrightStatusOptions={defaultSelectOptions.copyrightStatus}
-        auditStatusOptions={defaultSelectOptions.auditStatus}
-        auditConclusionOptions={defaultSelectOptions.auditConclusion}
+      />
+
+      {/* 通知组件 */}
+      <Notification
+        isVisible={notification.isVisible}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   )

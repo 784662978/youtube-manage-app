@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Download, Trash2 } from 'lucide-react'
+import { Upload, Download, Trash2, Loader2 } from 'lucide-react'
 import type { ScheduleItem } from '@/lib/types/monitor'
 
 interface ScheduleTableProps {
@@ -30,6 +30,14 @@ interface ScheduleTableProps {
   onDelete: (id: string) => void
   onExport: () => void
   onImport: () => void
+  isLoading?: boolean
+  isExporting?: boolean
+  pagination?: {
+    page: number
+    pageSize: number
+    total?: number
+  }
+  onPageChange?: (page: number) => void
 }
 
 export function ScheduleTable({
@@ -37,6 +45,10 @@ export function ScheduleTable({
   onDelete,
   onExport,
   onImport,
+  isLoading = false,
+  isExporting = false,
+  pagination,
+  onPageChange,
 }: ScheduleTableProps) {
   const [deleteId, setDeleteId] = React.useState<string | null>(null)
 
@@ -59,9 +71,9 @@ export function ScheduleTable({
                 <Upload className="size-4" />
                 上传Excel
               </Button>
-              <Button size="sm" variant="outline" onClick={onExport}>
-                <Download className="size-4" />
-                下载 Excel
+              <Button size="sm" variant="outline" onClick={onExport} disabled={isExporting}>
+                {isExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                {isExporting ? '导出中...' : '下载 Excel'}
               </Button>
             </div>
           </div>
@@ -92,7 +104,16 @@ export function ScheduleTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.length > 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={18} className="h-24 text-center">
+                      <div className="flex items-center justify-center text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        加载中...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : data.length > 0 ? (
                   data.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>{item.expectedPublishDate}</TableCell>
@@ -129,22 +150,20 @@ export function ScheduleTable({
                       <TableCell>{item.auditDate || '—'}</TableCell>
                       <TableCell>{item.operatorModification || '—'}</TableCell>
                       <TableCell className="sticky right-0 bg-background z-10">
-                        <div className="flex gap-1">
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            onClick={() => setDeleteId(item.id)}
-                          >
-                            <Trash2 className="size-3 text-destructive" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="icon-xs"
+                          variant="ghost"
+                          onClick={() => setDeleteId(item.id)}
+                        >
+                          <Trash2 className="size-3 text-destructive" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={18} className="text-center text-muted-foreground py-12">
-                      暂无排期数据，请新增或调整筛选条件
+                      暂无排期数据，请调整筛选条件
                     </TableCell>
                   </TableRow>
                 )}
@@ -154,14 +173,24 @@ export function ScheduleTable({
 
           {/* 分页 */}
           <div className="flex items-center justify-between py-3 text-sm text-muted-foreground">
-            <span>共 {data.length} 条</span>
+            <span>共 {pagination?.total || data.length} 条</span>
             <div className="flex items-center gap-2">
-              <span>每页 20 条</span>
+              <span>每页 {pagination?.pageSize || 20} 条</span>
               <div className="flex gap-1">
-                <Button variant="outline" size="sm" disabled>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!pagination || pagination.page <= 1 || isLoading}
+                  onClick={() => onPageChange?.((pagination?.page || 1) - 1)}
+                >
                   上一页
                 </Button>
-                <Button variant="outline" size="sm" disabled>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!pagination || !pagination.total || pagination.page >= Math.ceil(pagination.total / pagination.pageSize) || isLoading}
+                  onClick={() => onPageChange?.((pagination?.page || 1) + 1)}
+                >
                   下一页
                 </Button>
               </div>

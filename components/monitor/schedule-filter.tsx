@@ -1,6 +1,3 @@
-'use client'
-
-import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -85,14 +82,14 @@ export function ScheduleFilterBar({
             <span className="text-sm text-muted-foreground whitespace-nowrap">预计发布日期</span>
             <Input
               type="date"
-              className="w-36"
+              className="w-36 cursor-pointer"
               value={filter.expectedPublishDateStart || ''}
               onChange={(e) => handleDateChange('expectedPublishDateStart', e.target.value)}
             />
             <span className="text-muted-foreground">—</span>
             <Input
               type="date"
-              className="w-36"
+              className="w-36 cursor-pointer"
               value={filter.expectedPublishDateEnd || ''}
               onChange={(e) => handleDateChange('expectedPublishDateEnd', e.target.value)}
             />
@@ -101,14 +98,14 @@ export function ScheduleFilterBar({
             <span className="text-sm text-muted-foreground whitespace-nowrap">实际发布日期</span>
             <Input
               type="date"
-              className="w-36"
+              className="w-36 cursor-pointer"
               value={filter.actualPublishDateStart || ''}
               onChange={(e) => handleDateChange('actualPublishDateStart', e.target.value)}
             />
             <span className="text-muted-foreground">—</span>
             <Input
               type="date"
-              className="w-36"
+              className="w-36 cursor-pointer"
               value={filter.actualPublishDateEnd || ''}
               onChange={(e) => handleDateChange('actualPublishDateEnd', e.target.value)}
             />
@@ -391,7 +388,7 @@ export function ScheduleFilterBar({
             <span className="text-sm text-muted-foreground whitespace-nowrap">审核日期</span>
             <Input
               type="date"
-              className="w-36"
+              className="w-36 cursor-pointer"
               value={filter.auditDate || ''}
               onChange={(e) => handleDateChange('auditDate', e.target.value)}
             />
