@@ -253,7 +253,7 @@ export function ScheduleFilterBar({
             <span className="text-sm text-muted-foreground whitespace-nowrap">剧名称</span>
             <Input
               type="text"
-              placeholder="支持逗号分隔"
+              placeholder="输入剧名称"
               className="w-40"
               defaultValue={filter.dramaNames?.join(', ') || ''}
               onBlur={(e) => handleTextInputChange('dramaNames', e.target.value)}
@@ -330,7 +330,7 @@ export function ScheduleFilterBar({
             <span className="text-sm text-muted-foreground whitespace-nowrap">视频唯一ID</span>
             <Input
               type="text"
-              placeholder="支持逗号分隔"
+              placeholder="输入视频ID"
               className="w-40"
               defaultValue={filter.videoIds?.join(', ') || ''}
               onBlur={(e) => handleTextInputChange('videoIds', e.target.value)}

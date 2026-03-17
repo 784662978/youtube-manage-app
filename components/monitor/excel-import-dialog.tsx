@@ -26,6 +26,7 @@ import type { ScheduleItem } from '@/lib/types/monitor'
 
 // Excel列名到字段名的映射
 const EXCEL_COLUMN_MAPPING: Record<string, keyof ScheduleItem> = {
+  'schedule_id': 'id',
   '预计发布日期': 'expectedPublishDate',
   '实际发布日期': 'actualPublishDate',
   '内容一级分类': 'contentPrimaryCategory',
@@ -47,8 +48,73 @@ const EXCEL_COLUMN_MAPPING: Record<string, keyof ScheduleItem> = {
 
 // 必填字段
 const REQUIRED_FIELDS: (keyof ScheduleItem)[] = [
-  'videoId',
+  'expectedPublishDate',
+  'contentPrimaryCategory',
+  'contentSecondaryCategory',
+  'language',
+  'dramaName',
+  'copyrightOwner',
+  'expectedPublishChannel',
+  'isYPPPassed',
+  'expectedOperator',
 ]
+
+// 日期字段列表
+const DATE_FIELDS: (keyof ScheduleItem)[] = [
+  'expectedPublishDate',
+  'actualPublishDate',
+  'auditDate',
+]
+
+// 格式化日期为 YYYY-MM-DD 格式
+const formatDate = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  // 如果是 Date 对象
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null
+    const year = value.getFullYear()
+    const month = String(value.getMonth() + 1).padStart(2, '0')
+    const day = String(value.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // 如果是数字（Excel 序列号日期）
+  if (typeof value === 'number') {
+    // Excel 日期序列号转换：Excel 的日期从 1900-01-01 开始（序列号 1）
+    const excelEpoch = new Date(1899, 11, 30) // 1899-12-30
+    const date = new Date(excelEpoch.getTime() + value * 86400000)
+    if (isNaN(date.getTime())) return null
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // 如果是字符串，尝试解析并格式化
+  if (typeof value === 'string') {
+    // 尝试解析各种日期格式
+    const dateStr = value.trim()
+    
+    // 已经是 YYYY-MM-DD 格式
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr
+    }
+    
+    // 尝试解析其他格式
+    const parsed = new Date(dateStr)
+    if (!isNaN(parsed.getTime())) {
+      const year = parsed.getFullYear()
+      const month = String(parsed.getMonth() + 1).padStart(2, '0')
+      const day = String(parsed.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+  }
+
+  return null
+}
 
 // 导入结果类型
 interface ImportResult {
@@ -62,7 +128,7 @@ interface ImportResult {
 interface ExcelImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onImport: (items: ScheduleItem[]) => void
+  onImport: (items: ScheduleItem[]) => Promise<boolean>
 }
 
 export function ExcelImportDialog({
@@ -73,6 +139,8 @@ export function ExcelImportDialog({
   const [file, setFile] = React.useState<File | null>(null)
   const [parseResults, setParseResults] = React.useState<ImportResult[]>([])
   const [isProcessing, setIsProcessing] = React.useState(false)
+  const [isImporting, setIsImporting] = React.useState(false)
+  const [importError, setImportError] = React.useState<string | null>(null)
   const [step, setStep] = React.useState<'upload' | 'preview' | 'result'>('upload')
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -82,7 +150,16 @@ export function ExcelImportDialog({
     setParseResults([])
     setStep('upload')
     setIsProcessing(false)
+    setIsImporting(false)
+    setImportError(null)
   }
+
+  // 弹窗打开时重置状态
+  React.useEffect(() => {
+    if (open) {
+      resetState()
+    }
+  }, [open])
 
   // 处理文件选择
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,8 +185,9 @@ export function ExcelImportDialog({
         // 特殊处理布尔值
         if (field === 'isYPPPassed') {
           ;(data as Record<string, unknown>)[field] = value === '是' || value === true || value === 'TRUE' || value === 1
-        } else if (field === 'actualPublishDate' || field === 'auditDate') {
-          ;(data as Record<string, unknown>)[field] = value ? String(value) : null
+        } else if (DATE_FIELDS.includes(field)) {
+          // 日期字段格式化
+          ;(data as Record<string, unknown>)[field] = formatDate(value)
         } else {
           ;(data as Record<string, unknown>)[field] = String(value)
         }
@@ -165,11 +243,11 @@ export function ExcelImportDialog({
   }
 
   // 执行导入
-  const executeImport = () => {
+  const executeImport = async () => {
     const validItems: ScheduleItem[] = parseResults
       .filter(r => r.success && r.data)
       .map((r, index) => ({
-        id: `import_${Date.now()}_${index}`,
+        id: r.data!.id || `import_${Date.now()}_${index}`,
         expectedPublishDate: r.data!.expectedPublishDate || '',
         actualPublishDate: r.data!.actualPublishDate || null,
         contentPrimaryCategory: r.data!.contentPrimaryCategory || '',
@@ -189,8 +267,22 @@ export function ExcelImportDialog({
         operatorModification: (r.data!.operatorModification as '已修改' | '未修改') || null,
       }))
 
-    onImport(validItems)
-    setStep('result')
+    setIsImporting(true)
+    setImportError(null)
+
+    try {
+      const success = await onImport(validItems)
+      if (success) {
+        setStep('result')
+      } else {
+        setImportError('导入失败，请重试')
+      }
+    } catch (error) {
+      console.error('Import error:', error)
+      setImportError(error instanceof Error ? error.message : '导入失败，请重试')
+    } finally {
+      setIsImporting(false)
+    }
   }
 
   // 关闭对话框
@@ -255,12 +347,18 @@ export function ExcelImportDialog({
               </CardHeader>
               <CardContent className="text-xs">
                 <div className="grid grid-cols-3 gap-2 text-muted-foreground">
-                  {Object.keys(EXCEL_COLUMN_MAPPING).map((col) => (
-                    <div key={col} className="flex items-center gap-1">
-                      <span>{col}</span>
-                    </div>
-                  ))}
+                  {Object.keys(EXCEL_COLUMN_MAPPING).map((col) => {
+                    const field = EXCEL_COLUMN_MAPPING[col]
+                    const isRequired = REQUIRED_FIELDS.includes(field)
+                    return (
+                      <div key={col} className="flex items-center gap-1">
+                        <span>{col}</span>
+                        {isRequired && <span className="text-red-500">*</span>}
+                      </div>
+                    )
+                  })}
                 </div>
+                <p className="mt-2 text-muted-foreground">* 标记为必填字段</p>
               </CardContent>
             </Card>
           </div>
@@ -359,6 +457,13 @@ export function ExcelImportDialog({
                 存在 {stats.failed} 行数据校验失败，这些行将被跳过，仅导入有效数据
               </div>
             )}
+
+            {importError && (
+              <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-3 rounded flex items-center gap-2">
+                <XCircle className="size-4" />
+                {importError}
+              </div>
+            )}
           </div>
         )}
 
@@ -386,14 +491,14 @@ export function ExcelImportDialog({
           )}
           {step === 'preview' && (
             <>
-              <Button variant="outline" onClick={() => { resetState(); setStep('upload'); }}>
+              <Button variant="outline" onClick={() => { resetState(); setStep('upload'); }} disabled={isImporting}>
                 重新上传
               </Button>
               <Button 
                 onClick={executeImport} 
-                disabled={stats.success === 0}
+                disabled={stats.success === 0 || isImporting}
               >
-                导入 {stats.success} 条有效数据
+                {isImporting ? '导入中...' : `导入 ${stats.success} 条有效数据`}
               </Button>
             </>
           )}

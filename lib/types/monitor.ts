@@ -285,3 +285,22 @@ export interface SelectOption {
   value: string
   label: string
 }
+
+// 字典接口响应类型
+export interface DictionariesResponse {
+  expected_operator: string[]
+  content_category_level1: string[]
+  content_category_level2: string[]
+  language: string[]
+  copyright_owner: string[]
+  expected_publish_channel: string[]
+}
+
+// 排期概况统计响应类型
+export interface ScheduleOverviewResponse {
+  total_videos: number
+  total_channels: number
+  ypp_approved_channels: number
+  ypp_not_approved_channels: number
+  operators_count: number
+}

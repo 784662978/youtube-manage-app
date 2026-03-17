@@ -8,7 +8,7 @@ import { ScheduleFilterBar } from './schedule-filter'
 import { ScheduleTable } from './schedule-table'
 import { ExcelImportDialog } from './excel-import-dialog'
 import { apiClient } from '@/lib/api-client'
-import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem } from '@/lib/types/monitor'
+import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem, DictionariesResponse, ScheduleOverviewResponse } from '@/lib/types/monitor'
 import { Notification } from '@/components/ui/notification'
 
 // 模拟下拉选项数据
@@ -219,7 +219,13 @@ export function ScheduleMonitorPage() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [isTableLoading, setIsTableLoading] = React.useState(false)
   const [isExporting, setIsExporting] = React.useState(false)
+  // 字典数据状态
   const [operatorOptions, setOperatorOptions] = React.useState<SelectOption[]>(defaultSelectOptions.operator)
+  const [contentPrimaryOptions, setContentPrimaryOptions] = React.useState<SelectOption[]>(defaultSelectOptions.contentPrimary)
+  const [contentSecondaryOptions, setContentSecondaryOptions] = React.useState<SelectOption[]>(defaultSelectOptions.contentSecondary)
+  const [languageOptions, setLanguageOptions] = React.useState<SelectOption[]>(defaultSelectOptions.language)
+  const [copyrightOwnerOptions, setCopyrightOwnerOptions] = React.useState<SelectOption[]>(defaultSelectOptions.copyrightOwner)
+  const [channelOptions, setChannelOptions] = React.useState<SelectOption[]>(defaultSelectOptions.channel)
   const [pagination, setPagination] = React.useState<Pagination>({
     page: 1,
     pageSize: 20,
@@ -351,20 +357,29 @@ export function ScheduleMonitorPage() {
     }
   }
 
-  // 获取预计负责运营人员列表
-  const fetchOperators = React.useCallback(async () => {
+  // 获取字典数据
+  const fetchDictionaries = React.useCallback(async () => {
     try {
-      const { response } = await apiClient.get<{ response: string[] }>('/publishPlan/expected-operator')
+      const { response } = await apiClient.get<{ response: DictionariesResponse }>('/publishPlan/dictionaries')
+      
       // 将字符串数组转换为 SelectOption 格式
-      const options = response.map(name => ({
-        value: name,
-        label: name
-      }))
-      setOperatorOptions(options)
+      const toOptions = (items: string[]) => items.map(item => ({ value: item, label: item }))
+      
+      setOperatorOptions(toOptions(response.expected_operator))
+      setContentPrimaryOptions(toOptions(response.content_category_level1))
+      setContentSecondaryOptions(toOptions(response.content_category_level2))
+      setLanguageOptions(toOptions(response.language))
+      setCopyrightOwnerOptions(toOptions(response.copyright_owner))
+      setChannelOptions(toOptions(response.expected_publish_channel))
     } catch (error) {
-      console.error('Failed to fetch operators:', error)
+      console.error('Failed to fetch dictionaries:', error)
       // 失败时使用默认数据
       setOperatorOptions(defaultSelectOptions.operator)
+      setContentPrimaryOptions(defaultSelectOptions.contentPrimary)
+      setContentSecondaryOptions(defaultSelectOptions.contentSecondary)
+      setLanguageOptions(defaultSelectOptions.language)
+      setCopyrightOwnerOptions(defaultSelectOptions.copyrightOwner)
+      setChannelOptions(defaultSelectOptions.channel)
     }
   }, [])
 
@@ -407,29 +422,32 @@ export function ScheduleMonitorPage() {
         end_date: endDate
       })
 
-      const { response } = await apiClient.get<{ response: ScheduleSummaryReportResponse }>(`/publishPlan/schedule-summary-report?${params.toString()}`)
+      // 并行调用两个接口
+      const [summaryReportRes, overviewRes] = await Promise.all([
+        apiClient.get<{ response: ScheduleSummaryReportResponse }>(`/publishPlan/schedule-summary-report?${params.toString()}`),
+        apiClient.get<{ response: ScheduleOverviewResponse }>(`/publishPlan/schedule-overview?${params.toString()}`)
+      ])
 
       // Transform API response to ScheduleSummaryProps
       const newSummary = {
         dateRange: { start: startDate, end: endDate },
-        totalVideos: response.contentTypeDistributions.reduce((acc, curr) => acc + curr.videoCount, 0),
-        // Since API doesn't provide these counts yet, we keep them as 0 or could fetch separately if needed
-        totalChannels: 0,
-        yppPassedChannels: 0,
-        yppNotPassedChannels: 0,
-        totalOperators: 0,
-        contentTypes: response.contentTypeDistributions.map(item => ({
+        totalVideos: overviewRes.response.total_videos,
+        totalChannels: overviewRes.response.total_channels,
+        yppPassedChannels: overviewRes.response.ypp_approved_channels,
+        yppNotPassedChannels: overviewRes.response.ypp_not_approved_channels,
+        totalOperators: overviewRes.response.operators_count,
+        contentTypes: summaryReportRes.response.contentTypeDistributions.map(item => ({
           primaryCategory: item.contentCategoryLevel1,
           secondaryCategory: item.contentCategoryLevel2,
           videoCount: item.videoCount,
           copyrightDetails: item.copyrightDetail
         })),
-        publishStatuses: response.publishStatusSummaries.map(item => ({
+        publishStatuses: summaryReportRes.response.publishStatusSummaries.map(item => ({
           status: item.status,
           count: item.count,
           remark: item.remark
         })),
-        bannedVideos: response.prohibitedVideos.map(item => ({
+        bannedVideos: summaryReportRes.response.prohibitedVideos.map(item => ({
           videoId: item.videoId,
           dramaName: item.videoName,
           expectedChannel: item.plannedChannel,
@@ -449,11 +467,11 @@ export function ScheduleMonitorPage() {
     fetchSummary()
   }, [fetchSummary])
 
-  // 组件挂载时获取运营人员列表和排期明细
+  // 组件挂载时获取字典数据和排期明细
   React.useEffect(() => {
-    fetchOperators()
+    fetchDictionaries()
     fetchScheduleList()
-  }, [fetchOperators, fetchScheduleList])
+  }, [fetchDictionaries, fetchScheduleList])
 
   const handleSearch = () => {
     // 更新查询条件，触发明细排期表搜索
@@ -549,9 +567,9 @@ export function ScheduleMonitorPage() {
   }
 
   // 处理Excel导入结果
-  const handleImportComplete = async (items: ScheduleItem[]) => {
+  const handleImportComplete = async (items: ScheduleItem[]): Promise<boolean> => {
     if (items.length === 0) {
-      return
+      return false
     }
 
     try {
@@ -578,6 +596,8 @@ export function ScheduleMonitorPage() {
 
       // 重新获取概况数据
       fetchSummary()
+
+      return true
     } catch (error) {
       console.error('Import failed:', error)
       
@@ -587,6 +607,8 @@ export function ScheduleMonitorPage() {
         message: '导入失败，请重试',
         type: 'error',
       })
+
+      return false
     }
   }
 
@@ -604,14 +626,14 @@ export function ScheduleMonitorPage() {
         filter={filter}
         onFilterChange={setFilter}
         onSearch={handleSearch}
-        contentPrimaryOptions={defaultSelectOptions.contentPrimary}
-        contentSecondaryOptions={defaultSelectOptions.contentSecondary}
-        languageOptions={defaultSelectOptions.language}
+        contentPrimaryOptions={contentPrimaryOptions}
+        contentSecondaryOptions={contentSecondaryOptions}
+        languageOptions={languageOptions}
         yppOptions={defaultSelectOptions.ypp}
         publishStatusOptions={defaultSelectOptions.publishStatus}
         copyrightStatusOptions={defaultSelectOptions.copyrightStatus}
-        copyrightOwnerOptions={defaultSelectOptions.copyrightOwner}
-        channelOptions={defaultSelectOptions.channel}
+        copyrightOwnerOptions={copyrightOwnerOptions}
+        channelOptions={channelOptions}
         operatorOptions={operatorOptions}
         auditStatusOptions={defaultSelectOptions.auditStatus}
         auditConclusionOptions={defaultSelectOptions.auditConclusion}

@@ -243,7 +243,20 @@ export function EffectMonitorPage() {
 
   // 规则1表格列定义
   const rule1Columns: { key: keyof MissingPublishTimeAlert; header: string; render?: (value: unknown, item: MissingPublishTimeAlert) => React.ReactNode }[] = [
-    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { 
+      key: 'videoId', 
+      header: '视频唯一ID', 
+      render: (value) => (
+        <a
+          href={`https://www.youtube.com/watch?v=${value as string}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline font-mono text-xs"
+        >
+          {value as string}
+        </a>
+      ) 
+    },
     { key: 'videoName', header: '剧名称' },
     { key: 'publishChannel', header: '发布频道' },
     { key: 'actualPublishDate', header: '实际发布日期', render: (value) => (value as string | null) || '—' },
@@ -252,7 +265,20 @@ export function EffectMonitorPage() {
 
   // 规则2.1表格列定义
   const rule21Columns: { key: keyof VideoIdAnomalyWebAlert; header: string; render?: (value: unknown, item: VideoIdAnomalyWebAlert) => React.ReactNode }[] = [
-    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { 
+      key: 'videoId', 
+      header: '视频唯一ID', 
+      render: (value) => (
+        <a
+          href={`https://www.youtube.com/watch?v=${value as string}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline font-mono text-xs"
+        >
+          {value as string}
+        </a>
+      ) 
+    },
     { key: 'videoName', header: '剧名称' },
     { key: 'publishChannel', header: '发布频道' },
     { key: 'actualPublishDate', header: '实际发布日期' },
@@ -261,27 +287,61 @@ export function EffectMonitorPage() {
 
   // 规则2.2表格列定义
   const rule22Columns: { key: keyof VideoIdAnomalyDbAlert; header: string; render?: (value: unknown, item: VideoIdAnomalyDbAlert) => React.ReactNode }[] = [
-    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
     { 
-      key: 'publishUrl', 
-      header: '发布频道链接', 
+      key: 'videoId', 
+      header: '视频唯一ID', 
       render: (value) => (
         <a
-          href={value as string}
+          href={`https://www.youtube.com/watch?v=${value as string}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline break-all"
+          className="text-primary hover:underline font-mono text-xs"
         >
           {value as string}
         </a>
       ) 
     },
-    { key: 'actualPublishTime', header: '实际发布时间' },
+    { 
+      key: 'publishUrl', 
+      header: '发布频道链接', 
+      render: (value) => (
+        <a
+          // href={value as string}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-all"
+        >
+          {value as string}
+        </a>
+      ) 
+    },
+    { 
+      key: 'actualPublishTime', 
+      header: '实际发布时间', 
+      render: (value) => {
+        if (!value) return '—'
+        const date = dayjs(value as string)
+        return date.isValid() ? date.format('YYYY-MM-DD HH:mm:ss') : (value as string)
+      }
+    },
   ]
 
   // 规则3表格列定义
   const rule3Columns: { key: keyof ViewCountAnomalyAlert; header: string; render?: (value: unknown, item: ViewCountAnomalyAlert) => React.ReactNode }[] = [
-    { key: 'videoId', header: '视频唯一ID', render: (value) => <span className="font-mono text-xs">{value as string}</span> },
+    { 
+      key: 'videoId', 
+      header: '视频唯一ID', 
+      render: (value) => (
+        <a
+          href={`https://www.youtube.com/watch?v=${value as string}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline font-mono text-xs"
+        >
+          {value as string}
+        </a>
+      ) 
+    },
     { key: 'videoName', header: '剧名称' },
     { key: 'publishChannel', header: '发布频道' },
     { key: 'publishTime', header: '发布时间' },
