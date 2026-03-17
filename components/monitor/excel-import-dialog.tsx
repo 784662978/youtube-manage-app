@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle, ChevronRight } from 'lucide-react'
 import type { ScheduleItem } from '@/lib/types/monitor'
 
 // Excel列名到字段名的映射
@@ -66,39 +66,87 @@ const DATE_FIELDS: (keyof ScheduleItem)[] = [
   'auditDate',
 ]
 
+// 预览表格显示的列（按顺序）
+const PREVIEW_COLUMNS: { excelCol: string; field: keyof ScheduleItem; width?: string }[] = [
+  { excelCol: 'schedule_id', field: 'id', width: 'w-20' },
+  { excelCol: '预计发布日期', field: 'expectedPublishDate', width: 'w-28' },
+  { excelCol: '实际发布日期', field: 'actualPublishDate', width: 'w-28' },
+  { excelCol: '内容一级分类', field: 'contentPrimaryCategory', width: 'w-24' },
+  { excelCol: '内容二级分类', field: 'contentSecondaryCategory', width: 'w-24' },
+  { excelCol: '语种', field: 'language', width: 'w-20' },
+  { excelCol: '剧名称', field: 'dramaName', width: 'w-32' },
+  { excelCol: '版权方', field: 'copyrightOwner', width: 'w-24' },
+  { excelCol: '预计发布频道', field: 'expectedPublishChannel', width: 'w-28' },
+  { excelCol: '是否已过YPP', field: 'isYPPPassed', width: 'w-24' },
+  { excelCol: '预计负责运营人员', field: 'expectedOperator', width: 'w-28' },
+  { excelCol: '发布状态', field: 'publishStatus', width: 'w-20' },
+  { excelCol: '版权状态', field: 'copyrightStatus', width: 'w-20' },
+  { excelCol: '视频唯一ID', field: 'videoId', width: 'w-28' },
+  { excelCol: '审核状态', field: 'auditStatus', width: 'w-20' },
+  { excelCol: '审核结论', field: 'auditConclusion', width: 'w-20' },
+  { excelCol: '审核日期', field: 'auditDate', width: 'w-28' },
+  { excelCol: '运营再修改结论', field: 'operatorModification', width: 'w-28' },
+]
+
+// 格式化单元格值显示
+const formatCellValue = (value: unknown): React.ReactNode => {
+  if (value === null || value === undefined || value === '') {
+    return <span className="text-muted-foreground">-</span>
+  }
+  if (typeof value === 'boolean') {
+    return value ? '是' : '否'
+  }
+  return String(value)
+}
+
 // 格式化日期为 YYYY-MM-DD 格式
+// 主要处理 Excel 序列号日期，避免时区问题
 const formatDate = (value: unknown): string | null => {
   if (value === null || value === undefined || value === '') {
     return null
   }
 
-  // 如果是 Date 对象
+  // 如果是数字（Excel 序列号日期）- 最常见的情况
+  if (typeof value === 'number') {
+    // Excel 日期序列号转换公式：
+    // Excel 序列号 1 = 1900-01-01
+    // 但 Excel 有一个 bug：它认为 1900 年是闰年，所以 1900-02-29 被计为序列号 60
+    // 因此对于序列号 >= 60 的日期，需要减 1 来修正
+    // 更简单的方法：使用 UTC 日期计算，Excel 序列号代表的是纯日期，没有时区
+    
+    // 方法：Excel 序列号转 JS Date
+    // JS Date 的 UTC 时间戳 = (Excel序列号 - 25569) * 86400000
+    // 其中 25569 是 1970-01-01 对应的 Excel 序列号
+    
+    const excelSerial = value;
+    const jsTime = (excelSerial - 25569) * 86400000;
+    const date = new Date(jsTime);
+    
+    // 使用 UTC 方法获取日期，确保不受本地时区影响
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    
+    console.log('Excel序列号转换:', excelSerial, '->', `${year}-${month}-${day}`);
+    return `${year}-${month}-${day}`;
+  }
+
+  // 如果是 Date 对象（兼容旧数据或特殊情况）
   if (value instanceof Date) {
     if (isNaN(value.getTime())) return null
+    // 假设 Date 对象已经正确表示了日期，使用本地时区获取
     const year = value.getFullYear()
     const month = String(value.getMonth() + 1).padStart(2, '0')
     const day = String(value.getDate()).padStart(2, '0')
+    console.log('Date对象转换:', value, '->', `${year}-${month}-${day}`)
     return `${year}-${month}-${day}`
   }
 
-  // 如果是数字（Excel 序列号日期）
-  if (typeof value === 'number') {
-    // Excel 日期序列号转换：Excel 的日期从 1900-01-01 开始（序列号 1）
-    const excelEpoch = new Date(1899, 11, 30) // 1899-12-30
-    const date = new Date(excelEpoch.getTime() + value * 86400000)
-    if (isNaN(date.getTime())) return null
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  // 如果是字符串，尝试解析并格式化
+  // 如果是字符串
   if (typeof value === 'string') {
-    // 尝试解析各种日期格式
     const dateStr = value.trim()
     
-    // 已经是 YYYY-MM-DD 格式
+    // 已经是 YYYY-MM-DD 格式，直接返回
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return dateStr
     }
@@ -218,7 +266,8 @@ export function ExcelImportDialog({
     setIsProcessing(true)
     try {
       const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
+      // 不使用 cellDates，让日期保持为数字序列号，避免时区问题
+      const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: false })
       
       // 获取第一个工作表
       const sheetName = workbook.SheetNames[0]
@@ -226,6 +275,7 @@ export function ExcelImportDialog({
       
       // 转换为JSON
       const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet)
+      console.log('Excel原始数据:', jsonData)
 
       // 验证每一行数据
       const results: ImportResult[] = jsonData.map((row, index) => 
@@ -301,7 +351,7 @@ export function ExcelImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="size-5" />
@@ -366,7 +416,7 @@ export function ExcelImportDialog({
 
         {/* 预览步骤 */}
         {step === 'preview' && (
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 flex-1 min-h-0 overflow-hidden flex flex-col">
             {/* 统计信息 */}
             <div className="grid grid-cols-4 gap-4">
               <Card>
@@ -396,57 +446,71 @@ export function ExcelImportDialog({
             </div>
 
             {/* 预览表格 */}
-            <div className="border rounded-md overflow-y-auto max-h-75">
-              <Table>
-                <TableHeader>
+            <div className="border rounded-md overflow-auto max-h-96 flex-1 min-h-0 relative">
+              {/* 滚动提示指示器 */}
+              <div className="absolute right-0 top-0 bottom-0 w-6 bg-linear-to-l from-background to-transparent pointer-events-none z-30 flex items-center justify-center">
+                <ChevronRight className="size-4 text-muted-foreground/50" />
+              </div>
+              <Table className="min-w-max">
+                <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-16">行号</TableHead>
-                    <TableHead className="w-20">状态</TableHead>
-                    <TableHead>剧名称</TableHead>
-                    <TableHead>视频ID</TableHead>
-                    <TableHead>错误/警告</TableHead>
+                    <TableHead className="w-16 sticky left-0 bg-background z-20">行号</TableHead>
+                    <TableHead className="w-20 sticky left-16 bg-background z-20">状态</TableHead>
+                    {PREVIEW_COLUMNS.map((col) => (
+                      <TableHead key={col.field} className={col.width}>
+                        {col.excelCol}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-48 sticky right-0 bg-background z-20">错误/警告</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parseResults.map((result, index) => (
-                    <TableRow key={index} className={!result.success ? 'bg-red-50 dark:bg-red-950/20' : ''}>
-                      <TableCell>{result.rowIndex}</TableCell>
-                      <TableCell>
-                        {result.success ? (
-                          result.warnings.length > 0 ? (
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-                              <AlertCircle className="size-3 mr-1" />
-                              警告
-                            </Badge>
+                  {parseResults.map((result, index) => {
+                    const isErrorRow = !result.success
+                    const rowBgClass = isErrorRow ? 'bg-red-50 dark:bg-red-950/30' : 'bg-background'
+                    return (
+                      <TableRow key={index} className={isErrorRow ? 'bg-red-50 dark:bg-red-950/30' : ''}>
+                        <TableCell className={`sticky left-0 ${rowBgClass} z-10`}>{result.rowIndex}</TableCell>
+                        <TableCell className={`sticky left-16 ${rowBgClass} z-10`}>
+                          {result.success ? (
+                            result.warnings.length > 0 ? (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700">
+                                <AlertCircle className="size-3 mr-1" />
+                                警告
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700">
+                                <CheckCircle2 className="size-3 mr-1" />
+                                正常
+                              </Badge>
+                            )
                           ) : (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                              <CheckCircle2 className="size-3 mr-1" />
-                              正常
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700">
+                              <XCircle className="size-3 mr-1" />
+                              错误
                             </Badge>
-                          )
-                        ) : (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
-                            <XCircle className="size-3 mr-1" />
-                            错误
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{result.data?.dramaName || '-'}</TableCell>
-                      <TableCell className="font-mono text-xs">{result.data?.videoId || '-'}</TableCell>
-                      <TableCell className="text-xs">
-                        {result.errors.length > 0 && (
-                          <div className="text-red-600">
-                            {result.errors.map((e, i) => <div key={i}>{e}</div>)}
-                          </div>
-                        )}
-                        {result.warnings.length > 0 && (
-                          <div className="text-yellow-600">
-                            {result.warnings.map((w, i) => <div key={i}>{w}</div>)}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          )}
+                        </TableCell>
+                        {PREVIEW_COLUMNS.map((col) => (
+                          <TableCell key={col.field} className={col.width}>
+                            {formatCellValue(result.data?.[col.field])}
+                          </TableCell>
+                        ))}
+                        <TableCell className={`text-xs sticky right-0 ${rowBgClass} z-10`}>
+                          {result.errors.length > 0 && (
+                            <div className="text-red-600 dark:text-red-400">
+                              {result.errors.map((e, i) => <div key={i}>{e}</div>)}
+                            </div>
+                          )}
+                          {result.warnings.length > 0 && (
+                            <div className="text-yellow-600 dark:text-yellow-400">
+                              {result.warnings.map((w, i) => <div key={i}>{w}</div>)}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
