@@ -8,8 +8,10 @@ import { ScheduleFilterBar } from './schedule-filter'
 import { ScheduleTable } from './schedule-table'
 import { ExcelImportDialog } from './excel-import-dialog'
 import { apiClient } from '@/lib/api-client'
-import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem, DictionariesResponse, ScheduleOverviewResponse } from '@/lib/types/monitor'
+import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem, DictionariesResponse, ScheduleOverviewResponse, AdminEditRequest, UserEditRequest } from '@/lib/types/monitor'
 import { Notification } from '@/components/ui/notification'
+import { usePermission } from '@/components/permission-provider'
+import { ScheduleEditDialog } from './schedule-edit-dialog'
 
 // 模拟下拉选项数据
 const defaultSelectOptions = {
@@ -100,7 +102,7 @@ const mockScheduleData: ScheduleItem[] = [
     publishStatus: '未发布',
     copyrightStatus: '已授权',
     videoId: 'vid_001',
-    auditStatus: '待审核',
+    auditStatus: '未审核',
     auditConclusion: null,
     auditDate: null,
     operatorModification: null,
@@ -201,17 +203,42 @@ function exportToExcel(data: ScheduleItem[], filename: string = '排期明细') 
 }
 
 export function ScheduleMonitorPage() {
+  // 获取权限信息
+  const { isComponentHidden, isAdmin } = usePermission()
+  const showSummary = !isComponentHidden('schedule-summary')
+  
   // 排期概况的独立日期范围
   const [summaryDateRange, setSummaryDateRange] = React.useState({
     start: dayjs().startOf('month').format('YYYY-MM-DD'),
     end: dayjs().endOf('month').format('YYYY-MM-DD'),
   })
   
-  // 筛选条件（用于明细排期表）
-  const [filter, setFilter] = React.useState<ScheduleFilter>({})
+  // 获取本周日期范围（周一到周日）
+  const getCurrentWeekRange = () => {
+    const today = dayjs()
+    const dayOfWeek = today.day() // 0 (周日) 到 6 (周六)
+    // 计算本周一（如果今天是周日，则周一是 6 天前）
+    const monday = dayOfWeek === 0 ? today.subtract(6, 'day') : today.subtract(dayOfWeek - 1, 'day')
+    const sunday = monday.add(6, 'day')
+    return {
+      start: monday.format('YYYY-MM-DD'),
+      end: sunday.format('YYYY-MM-DD'),
+    }
+  }
+
+  const currentWeekRange = getCurrentWeekRange()
   
-  // 实际用于查询的筛选条件（只在点击搜索时更新）
-  const [searchFilter, setSearchFilter] = React.useState<ScheduleFilter>({})
+  // 筛选条件（用于明细排期表）- 默认筛选本周
+  const [filter, setFilter] = React.useState<ScheduleFilter>({
+    expectedPublishDateStart: currentWeekRange.start,
+    expectedPublishDateEnd: currentWeekRange.end,
+  })
+  
+  // 实际用于查询的筛选条件（只在点击搜索时更新）- 默认同步本周筛选
+  const [searchFilter, setSearchFilter] = React.useState<ScheduleFilter>({
+    expectedPublishDateStart: currentWeekRange.start,
+    expectedPublishDateEnd: currentWeekRange.end,
+  })
   
   const [data, setData] = React.useState<ScheduleItem[]>([])
   const [summary, setSummary] = React.useState<ScheduleSummaryProps>(defaultSummary)
@@ -240,6 +267,9 @@ export function ScheduleMonitorPage() {
     message: '',
     type: 'success',
   })
+  // 编辑对话框状态
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const [editingItem, setEditingItem] = React.useState<ScheduleItem | null>(null)
 
   // 将筛选条件映射为API参数
   const buildSearchParams = (filter: ScheduleFilter, page: number, pageSize: number): ScheduleSearchParams => {
@@ -326,7 +356,7 @@ export function ScheduleMonitorPage() {
       publishStatus: item.publish_status === 1 ? '已发布' : '未发布',
       copyrightStatus: item.copyright_status === 1 ? '正常' : '禁播',
       videoId: item.video_id,
-      auditStatus: item.review_status === 0 ? '未审核' : item.review_status === 1 ? '已审核' : '待审核',
+      auditStatus: item.review_status === 0 ? '未审核' : '已审核',
       auditConclusion: item.review_result === 1 ? '通过' : item.review_result === 0 ? '未通过' : null,
       auditDate: item.review_date,
       operatorModification: item.operation_revision_result === 1 ? '已修改' : item.operation_revision_result === 0 ? '未修改' : null,
@@ -485,6 +515,11 @@ export function ScheduleMonitorPage() {
     setPagination(prev => ({ ...prev, page }))
   }
 
+  // 处理每页条数变化
+  const handlePageSizeChange = (pageSize: number) => {
+    setPagination(prev => ({ ...prev, page: 1, pageSize })) // 切换每页条数时重置到第一页
+  }
+
   const handleDelete = async (id: string) => {
     try {
       await apiClient.delete<{ response: boolean }>(`/publishPlan/delete/${id}`)
@@ -612,14 +647,62 @@ export function ScheduleMonitorPage() {
     }
   }
 
+  // 打开编辑对话框
+  const handleEdit = (item: ScheduleItem) => {
+    setEditingItem(item)
+    setEditDialogOpen(true)
+  }
+
+  // 保存编辑
+  const handleEditSave = async (requestData: AdminEditRequest | UserEditRequest): Promise<boolean> => {
+    try {
+      // 根据角色调用不同的接口
+      const endpoint = isAdmin 
+        ? `/publishPlan/admin-edit/${requestData.id}`
+        : `/publishPlan/user-edit/${requestData.id}`
+      
+      await apiClient.put<{ response: boolean }>(endpoint, requestData)
+      
+      // 显示成功通知
+      setNotification({
+        isVisible: true,
+        message: '编辑成功',
+        type: 'success',
+      })
+
+      // 重新获取明细排期表
+      fetchScheduleList()
+
+      // 重新获取概况数据
+      if (showSummary) {
+        fetchSummary()
+      }
+
+      return true
+    } catch (error) {
+      console.error('Edit failed:', error)
+      
+      // 显示失败通知
+      setNotification({
+        isVisible: true,
+        message: '编辑失败，请重试',
+        type: 'error',
+      })
+
+      return false
+    }
+  }
+
   return (
     <div className="space-y-6 py-4">
-      {/* 排期概况 */}
-      <ScheduleSummary 
-        {...summary} 
-        isLoading={isLoading}
-        onDateRangeChange={handleDateRangeChange}
-      />
+      {/* 排期概况 - 仅 admin 可见 */}
+      {showSummary && (
+        <ScheduleSummary 
+          {...summary} 
+          isLoading={isLoading}
+          onDateRangeChange={handleDateRangeChange}
+        />
+      )}
 
       {/* 筛选栏 */}
       <ScheduleFilterBar
@@ -644,12 +727,14 @@ export function ScheduleMonitorPage() {
       <ScheduleTable
         data={data}
         onDelete={handleDelete}
+        onEdit={handleEdit}
         onExport={handleExport}
         onImport={handleImport}
         isLoading={isTableLoading}
         isExporting={isExporting}
         pagination={pagination}
         onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
       />
 
       {/* Excel导入对话框 */}
@@ -657,6 +742,22 @@ export function ScheduleMonitorPage() {
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
         onImport={handleImportComplete}
+      />
+
+      {/* 编辑对话框 */}
+      <ScheduleEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        item={editingItem}
+        onSave={handleEditSave}
+        options={{
+          contentPrimary: contentPrimaryOptions,
+          contentSecondary: contentSecondaryOptions,
+          language: languageOptions,
+          copyrightOwner: copyrightOwnerOptions,
+          channel: channelOptions,
+          operator: operatorOptions,
+        }}
       />
 
       {/* 通知组件 */}

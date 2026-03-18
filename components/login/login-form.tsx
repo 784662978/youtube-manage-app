@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { useActionState, useEffect } from "react"
 import { loginAction, LoginState } from "@/app/actions/auth"
 import { useRouter } from "next/navigation"
+import { usePermission } from "@/components/permission-provider"
 
 const initialState: LoginState = {
   success: false,
@@ -31,6 +32,7 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [state, formAction, isPending] = useActionState(loginAction, initialState)
   const router = useRouter()
+  const { setRole } = usePermission() // 获取权限更新方法
 
   useEffect(() => {
     if (state.success && state.data) {
@@ -41,15 +43,23 @@ export function LoginForm({
         if (state.data.refresh_token) {
           localStorage.setItem("refresh_token", state.data.refresh_token)
         }
+        // 同步更新 PermissionProvider 的角色状态
+        if (state.data.user_role) {
+          console.log('[Login] 设置用户角色:', state.data.user_role)
+          setRole(state.data.user_role) // 同时更新 localStorage 和 Provider state
+        }
       } catch (e) {
         console.error("Failed to save token to localStorage", e)
       }
       
-      // 登录成功后跳转 (例如跳转到首页)
-      // 使用 replace 防止用户点回退再次回到登录页
-      router.replace("/Channel/list")
+      // 登录成功后跳转
+      // user 角色跳转到排期监控，admin 跳转到频道列表
+      const targetPath = state.data.user_role === 'user' 
+        ? "/monitor/schedule" 
+        : "/Channel/list"
+      router.replace(targetPath)
     }
-  }, [state, router])
+  }, [state, router, setRole])
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>

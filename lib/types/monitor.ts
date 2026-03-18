@@ -15,7 +15,7 @@ export interface ScheduleItem {
   publishStatus: '已发布' | '未发布' // 发布状态
   copyrightStatus: string // 版权状态
   videoId: string // 视频唯一ID
-  auditStatus: '未审核' | '已审核' | '待审核' // 审核状态
+  auditStatus: '未审核' | '已审核' // 审核状态
   auditConclusion: '通过' | '未通过' | null // 审核结论
   auditDate: string | null // 审核日期
   operatorModification: '已修改' | '未修改' | null // 运营再修改结论
@@ -303,4 +303,39 @@ export interface ScheduleOverviewResponse {
   ypp_approved_channels: number
   ypp_not_approved_channels: number
   operators_count: number
+}
+
+// 管理员编辑请求参数
+export interface AdminEditRequest {
+  id: string
+  expected_publish_date: string
+  actual_publish_date: string | null
+  content_category_level1: string
+  content_category_level2: string
+  language: string
+  is_ypp_approved: number
+  publish_status: number
+  copyright_status: number
+  video_name: string
+  copyright_owner: string
+  expected_publish_channel: string
+  expected_operator: string
+  video_id: string
+  review_status: number
+  review_result: number | null
+  review_date: string | null
+  operation_revision_result: number | null
+}
+
+// 普通用户编辑请求参数
+export interface UserEditRequest {
+  id: string
+  publish_status: number
+  actual_publish_date: string | null
+  copyright_status: number
+  video_id: string
+  review_status: number
+  review_result: number | null
+  review_date: string | null
+  operation_revision_result: number | null
 }

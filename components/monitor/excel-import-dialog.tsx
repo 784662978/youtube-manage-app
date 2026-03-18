@@ -48,6 +48,7 @@ const EXCEL_COLUMN_MAPPING: Record<string, keyof ScheduleItem> = {
 
 // 必填字段
 const REQUIRED_FIELDS: (keyof ScheduleItem)[] = [
+  'id', // schedule_id 为必填项
   'expectedPublishDate',
   'contentPrimaryCategory',
   'contentSecondaryCategory',
@@ -295,9 +296,9 @@ export function ExcelImportDialog({
   // 执行导入
   const executeImport = async () => {
     const validItems: ScheduleItem[] = parseResults
-      .filter(r => r.success && r.data)
-      .map((r, index) => ({
-        id: r.data!.id || `import_${Date.now()}_${index}`,
+      .filter(r => r.success && r.data && r.data.id) // id 必须存在
+      .map((r) => ({
+        id: r.data!.id!, // id 已经过滤确保存在
         expectedPublishDate: r.data!.expectedPublishDate || '',
         actualPublishDate: r.data!.actualPublishDate || null,
         contentPrimaryCategory: r.data!.contentPrimaryCategory || '',

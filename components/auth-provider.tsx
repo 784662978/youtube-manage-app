@@ -19,8 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
 
     if (!token && !isPublicPath) {
-      // User is NOT logged in and visiting a private route
-      // Redirect to login with return url
+      // 用户未登录且访问的是私有路由
+      // 重定向至登录页面，并附带返回URL
       const queryString = searchParams.toString();
       const returnUrl = encodeURIComponent(pathname + (queryString ? `?${queryString}` : ""));
       router.replace(`/login?redirect=${returnUrl}`);

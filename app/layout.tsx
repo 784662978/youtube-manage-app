@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
+import { PermissionProvider } from "@/components/permission-provider";
 import { Suspense } from "react";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
@@ -33,7 +34,9 @@ export default function RootLayout({
       >
         <Suspense fallback={null}>
           <AuthProvider>
-            {children}
+            <PermissionProvider>
+              {children}
+            </PermissionProvider>
           </AuthProvider>
         </Suspense>
       </body>

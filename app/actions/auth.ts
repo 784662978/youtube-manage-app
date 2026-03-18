@@ -1,10 +1,12 @@
 
 import { apiClient } from "@/lib/api-client";
+import type { UserRole } from "@/lib/permissions";
 
 interface LoginResponseData {
   user_id: number;
   jwt_token: string;
   refresh_token: string;
+  user_role?: UserRole; // 新增用户角色字段
 }
 
 interface ApiResponse {
@@ -21,6 +23,7 @@ export type LoginState = {
     user_id: number;
     jwt_token: string;
     refresh_token?: string;
+    user_role?: UserRole; // 新增用户角色字段
   };
 };
 
@@ -44,10 +47,22 @@ export async function loginAction(
     const result = await apiClient.post<ApiResponse>("/auth/login", payload, undefined, { skipAuth: true });
 
     if (result.success && result.response) {
-      const { refresh_token, jwt_token, user_id } = result.response;
+      const { refresh_token, jwt_token, user_id, user_role } = result.response;
+
+      // 调试：打印后端返回的完整响应，排查角色字段
+      console.log('[Auth] 后端登录响应:', {
+        user_id,
+        user_role,
+        hasUserRole: !!user_role,
+        userRoleType: typeof user_role,
+        fullResponse: result.response
+      });
 
       // In static export, we cannot set cookies on server side.
       // We return the tokens to the client to handle storage (e.g. localStorage)
+      
+      // 验证 user_role 是否为有效值
+      const validRole = (user_role === 'admin' || user_role === 'user') ? user_role : 'user';
       
       return {
         success: true,
@@ -55,7 +70,8 @@ export async function loginAction(
         data: {
           user_id,
           jwt_token,
-          refresh_token
+          refresh_token,
+          user_role: validRole,
         },
       };
     } else {
@@ -64,11 +80,12 @@ export async function loginAction(
         message: result.msg || "登录失败，请检查账号密码",
       };
     }
-  } catch (error: any) {
-    console.error("Login Error:", error.message);
+  } catch (error: unknown) {
+    console.error("Login Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "服务器连接失败，请稍后重试";
     return {
       success: false,
-      message: error.message || "服务器连接失败，请稍后重试",
+      message: errorMessage,
     };
   }
 }

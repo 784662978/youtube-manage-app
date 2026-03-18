@@ -22,12 +22,66 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Download, Trash2, Loader2 } from 'lucide-react'
+import { Upload, Download, Trash2, Loader2, Pencil, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal } from 'lucide-react'
 import type { ScheduleItem } from '@/lib/types/monitor'
+import { usePermission } from '@/components/permission-provider'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+// 每页条数选项
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+
+// 生成页码数组（带省略号）
+function generatePageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+
+  const pages: (number | 'ellipsis')[] = []
+  
+  // 始终显示第1页
+  pages.push(1)
+
+  if (current <= 4) {
+    // 当前页靠近开头
+    for (let i = 2; i <= Math.min(5, total - 1); i++) {
+      pages.push(i)
+    }
+    if (total > 5) {
+      pages.push('ellipsis')
+    }
+  } else if (current >= total - 3) {
+    // 当前页靠近结尾
+    pages.push('ellipsis')
+    for (let i = Math.max(2, total - 4); i <= total - 1; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 当前页在中间
+    pages.push('ellipsis')
+    for (let i = current - 1; i <= current + 1; i++) {
+      pages.push(i)
+    }
+    pages.push('ellipsis')
+  }
+
+  // 始终显示最后一页
+  if (total > 1) {
+    pages.push(total)
+  }
+
+  return pages
+}
 
 interface ScheduleTableProps {
   data: ScheduleItem[]
   onDelete: (id: string) => void
+  onEdit: (item: ScheduleItem) => void
   onExport: () => void
   onImport: () => void
   isLoading?: boolean
@@ -38,19 +92,30 @@ interface ScheduleTableProps {
     total?: number
   }
   onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
 }
 
 export function ScheduleTable({
   data,
   onDelete,
+  onEdit,
   onExport,
   onImport,
   isLoading = false,
   isExporting = false,
   pagination,
   onPageChange,
+  onPageSizeChange,
 }: ScheduleTableProps) {
   const [deleteId, setDeleteId] = React.useState<string | null>(null)
+  const { isAdmin } = usePermission()
+
+  // 计算分页信息
+  const currentPage = pagination?.page || 1
+  const pageSize = pagination?.pageSize || 20
+  const total = pagination?.total || 0
+  const totalPages = Math.ceil(total / pageSize) || 1
+  const pageNumbers = generatePageNumbers(currentPage, totalPages)
 
   // 删除功能
   const handleDelete = () => {
@@ -67,10 +132,12 @@ export function ScheduleTable({
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">明细排期表</CardTitle>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={onImport}>
-                <Upload className="size-4" />
-                上传Excel
-              </Button>
+              {isAdmin && (
+                <Button size="sm" variant="outline" onClick={onImport}>
+                  <Upload className="size-4" />
+                  上传Excel
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={onExport} disabled={isExporting}>
                 {isExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                 {isExporting ? '导出中...' : '下载 Excel'}
@@ -138,7 +205,7 @@ export function ScheduleTable({
                           variant={
                             item.auditStatus === '已审核'
                               ? 'default'
-                              : item.auditStatus === '待审核'
+                              : item.auditStatus === '未审核'
                                 ? 'outline'
                                 : 'secondary'
                           }
@@ -150,13 +217,22 @@ export function ScheduleTable({
                       <TableCell>{item.auditDate || '—'}</TableCell>
                       <TableCell>{item.operatorModification || '—'}</TableCell>
                       <TableCell className="sticky right-0 bg-background z-10">
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          onClick={() => setDeleteId(item.id)}
-                        >
-                          <Trash2 className="size-3 text-destructive" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            onClick={() => onEdit(item)}
+                          >
+                            <Pencil className="size-3" />
+                          </Button>
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            onClick={() => setDeleteId(item.id)}
+                          >
+                            <Trash2 className="size-3 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -173,25 +249,98 @@ export function ScheduleTable({
 
           {/* 分页 */}
           <div className="flex items-center justify-between py-3 text-sm text-muted-foreground">
-            <span>共 {pagination?.total || data.length} 条</span>
+            <div className="flex items-center gap-4">
+              <span>共 {total} 条</span>
+            </div>
             <div className="flex items-center gap-2">
-              <span>每页 {pagination?.pageSize || 20} 条</span>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-2 mr-3">
+                <span>每页</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => onPageSizeChange?.(Number(value))}
+                >
+                  <SelectTrigger className="w-16 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span>条</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* 首页 */}
                 <Button
                   variant="outline"
-                  size="sm"
-                  disabled={!pagination || pagination.page <= 1 || isLoading}
-                  onClick={() => onPageChange?.((pagination?.page || 1) - 1)}
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={currentPage <= 1 || isLoading}
+                  onClick={() => onPageChange?.(1)}
+                  title="首页"
                 >
-                  上一页
+                  <ChevronsLeft className="size-4" />
                 </Button>
+                {/* 上一页 */}
                 <Button
                   variant="outline"
-                  size="sm"
-                  disabled={!pagination || !pagination.total || pagination.page >= Math.ceil(pagination.total / pagination.pageSize) || isLoading}
-                  onClick={() => onPageChange?.((pagination?.page || 1) + 1)}
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={currentPage <= 1 || isLoading}
+                  onClick={() => onPageChange?.(currentPage - 1)}
+                  title="上一页"
                 >
-                  下一页
+                  <ChevronLeft className="size-4" />
+                </Button>
+                {/* 页码导航 */}
+                <div className="flex items-center gap-1 px-1">
+                  {pageNumbers.map((page, index) => {
+                    if (page === 'ellipsis') {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-1 text-muted-foreground">
+                          <MoreHorizontal className="size-4" />
+                        </span>
+                      )
+                    }
+                    const isActive = page === currentPage
+                    return (
+                      <Button
+                        key={page}
+                        variant={isActive ? 'default' : 'outline'}
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={isLoading}
+                        onClick={() => onPageChange?.(page)}
+                      >
+                        {page}
+                      </Button>
+                    )
+                  })}
+                </div>
+                {/* 下一页 */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={currentPage >= totalPages || isLoading}
+                  onClick={() => onPageChange?.(currentPage + 1)}
+                  title="下一页"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+                {/* 末页 */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={currentPage >= totalPages || isLoading}
+                  onClick={() => onPageChange?.(totalPages)}
+                  title="末页"
+                >
+                  <ChevronsRight className="size-4" />
                 </Button>
               </div>
             </div>
