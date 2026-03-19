@@ -154,6 +154,7 @@ function PaginatedTable<T extends object>({
 export function EffectMonitorPage() {
   const [dateStart, setDateStart] = React.useState(dayjs().subtract(1, 'day').format('YYYY-MM-DD'))
   const [dateEnd, setDateEnd] = React.useState(dayjs().format('YYYY-MM-DD'))
+  const [expectedOperator, setExpectedOperator] = React.useState('') // 预计负责运营人员筛选
   const [isLoading, setIsLoading] = React.useState(false)
 
   // 告警数据
@@ -234,6 +235,11 @@ export function EffectMonitorPage() {
         date_end: dateEnd,
       })
 
+      // 添加预计负责运营人员筛选参数
+      if (expectedOperator) {
+        params.append('expected_operator', expectedOperator)
+      }
+
       const { response } = await apiClient.get<{ response: WarningResponse }>(
         `/publishPlan/warning?${params.toString()}`
       )
@@ -253,7 +259,7 @@ export function EffectMonitorPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [dateStart, dateEnd])
+  }, [dateStart, dateEnd, expectedOperator])
 
   // 初始加载
   React.useEffect(() => {
@@ -461,6 +467,16 @@ export function EffectMonitorPage() {
               className="w-36 cursor-pointer"
               value={dateEnd}
               onChange={(e) => setDateEnd(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">预计负责运营人员</span>
+            <Input
+              type="text"
+              placeholder="请输入运营人员姓名"
+              className="w-48"
+              value={expectedOperator}
+              onChange={(e) => setExpectedOperator(e.target.value)}
             />
           </div>
             <Button variant="outline" size="sm" onClick={() => handleQuickDate(2)}>

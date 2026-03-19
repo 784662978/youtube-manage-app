@@ -415,6 +415,42 @@ export function ScheduleFilterBar({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">排序字段</span>
+            <Select
+              value={filter.sortField || 'expected_publish_date'}
+              onValueChange={(v) => onFilterChange({ ...filter, sortField: v as 'expected_publish_date' | 'view_count' })}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="expected_publish_date">预计发布日期</SelectItem>
+                  <SelectItem value="view_count">播放量</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">排序方式</span>
+            <Select
+              value={filter.sortOrder || 'desc'}
+              onValueChange={(v) => onFilterChange({ ...filter, sortOrder: v as 'asc' | 'desc' })}
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="asc">升序</SelectItem>
+                  <SelectItem value="desc">降序</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* 搜索按钮 */}

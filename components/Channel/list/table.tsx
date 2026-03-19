@@ -26,6 +26,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -83,7 +90,8 @@ export type Payment = {
   channel_title: string,
   channel_country: string,
   channel_published_at: string,
-  created_at: string
+  created_at: string,
+  monitor_auth: number
 }
 
 export function DataTableDemo() {
@@ -111,7 +119,8 @@ export function DataTableDemo() {
   const [currentProject, setCurrentProject] = React.useState<{
     id?: number,
     name: string,
-    description: string
+    description: string,
+    monitor_auth: number
   } | null>(null)
   const [isSaving, setIsSaving] = React.useState(false)
 
@@ -149,6 +158,7 @@ export function DataTableDemo() {
     description: "频道描述",
     created_at: "创建时间",
     auth_status: "授权状态",
+    monitor_auth: "运营监控",
     actions: "操作",
   }
 
@@ -309,6 +319,20 @@ export function DataTableDemo() {
         </div>
       ),
     },
+    // 运营监控
+    {
+      accessorKey: "monitor_auth",
+      header: "运营监控",
+      cell: ({ row }) => (
+        <div className="capitalize">
+          <Badge
+            variant={row.getValue("monitor_auth") === 1 ? "default" : "secondary"}
+          >
+            {row.getValue("monitor_auth") === 1 ? "是" : "否"}
+          </Badge>
+        </div>
+      ),
+    },
     {
       id: "actions",
       enableHiding: false,
@@ -417,13 +441,15 @@ export function DataTableDemo() {
       if (isAdd) {
         await apiClient.post(`/project`, {
           name: currentProject.name,
-          description: currentProject.description
+          description: currentProject.description,
+          monitor_auth: currentProject.monitor_auth
         })
         showNotification("创建成功", "success")
       } else {
         await apiClient.put(`/project/${currentProject.id}`, {
           name: currentProject.name,
-          description: currentProject.description
+          description: currentProject.description,
+          monitor_auth: currentProject.monitor_auth
         })
         showNotification("更新成功", "success")
       }
@@ -504,7 +530,8 @@ export function DataTableDemo() {
           setEditOpen(true)
           setCurrentProject({
             name: "",
-            description: ""
+            description: "",
+            monitor_auth: 0
           })
         }}>
           <Plus />创建频道
@@ -598,6 +625,25 @@ export function DataTableDemo() {
                   )
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="monitor_auth">运营监控</Label>
+              <Select
+                value={String(currentProject?.monitor_auth ?? 0)}
+                onValueChange={(value) =>
+                  setCurrentProject((prev) =>
+                    prev ? { ...prev, monitor_auth: Number(value) } : null
+                  )
+                }
+              >
+                <SelectTrigger id="monitor_auth" className="w-full">
+                  <SelectValue placeholder="选择运营监控状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">否</SelectItem>
+                  <SelectItem value="1">是</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <SheetFooter>
               <Button type="submit" disabled={isSaving}>

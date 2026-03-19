@@ -19,6 +19,8 @@ export interface ScheduleItem {
   auditConclusion: '通过' | '未通过' | null // 审核结论
   auditDate: string | null // 审核日期
   operatorModification: '已修改' | '未修改' | null // 运营再修改结论
+  viewCount?: number // 播放量
+  reviewOperator?: string // 审核人员
 }
 
 // 排期概况统计
@@ -78,6 +80,8 @@ export interface ScheduleFilter {
   auditConclusion?: string
   auditDate?: string
   operatorModification?: string
+  sortField?: 'expected_publish_date' | 'view_count' // 排序字段
+  sortOrder?: 'asc' | 'desc' // 排序方式
 }
 
 // API 筛选参数 (对应后端接口)
@@ -103,6 +107,8 @@ export interface ScheduleSearchParams {
   operation_revision_result?: string
   page?: number
   page_size?: number
+  sort_field?: 'expected_publish_date' | 'view_count' // 排序字段
+  sort_order?: 'asc' | 'desc' // 排序方式
 }
 
 // API 排期项响应类型
@@ -125,6 +131,8 @@ export interface ScheduleItemResponse {
   review_result: number | null // 0, 1
   review_date: string | null
   operation_revision_result: number | null // 0, 1
+  view_count?: number // 播放量
+  review_operator?: string // 审核人员
 }
 
 // API 排期列表响应类型
@@ -325,6 +333,7 @@ export interface AdminEditRequest {
   review_result: number | null
   review_date: string | null
   operation_revision_result: number | null
+  review_operator?: string // 审核人员
 }
 
 // 普通用户编辑请求参数
@@ -338,4 +347,14 @@ export interface UserEditRequest {
   review_result: number | null
   review_date: string | null
   operation_revision_result: number | null
+}
+
+// 审核请求参数
+export interface AuditRequest {
+  id: string
+  review_status: number // 审核状态：0-未审核，1-已审核
+  review_result: number | null // 审核结论：0-未通过，1-通过
+  review_date: string | null // 审核日期
+  review_operator: string // 审核人员
+  operation_revision_result: number | null // 运营再修改结论：0-未修改，1-已修改
 }

@@ -8,10 +8,11 @@ import { ScheduleFilterBar } from './schedule-filter'
 import { ScheduleTable } from './schedule-table'
 import { ExcelImportDialog } from './excel-import-dialog'
 import { apiClient } from '@/lib/api-client'
-import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem, DictionariesResponse, ScheduleOverviewResponse, AdminEditRequest, UserEditRequest } from '@/lib/types/monitor'
+import type { ScheduleItem, ScheduleFilter, ScheduleSummaryReportResponse, SelectOption, ScheduleSearchParams, ScheduleItemResponse, ScheduleListResponse, Pagination, ImportDataItem, DictionariesResponse, ScheduleOverviewResponse, AdminEditRequest, UserEditRequest, AuditRequest } from '@/lib/types/monitor'
 import { Notification } from '@/components/ui/notification'
 import { usePermission } from '@/components/permission-provider'
 import { ScheduleEditDialog } from './schedule-edit-dialog'
+import { ScheduleAuditDialog } from './schedule-audit-dialog'
 
 // 模拟下拉选项数据
 const defaultSelectOptions = {
@@ -232,12 +233,16 @@ export function ScheduleMonitorPage() {
   const [filter, setFilter] = React.useState<ScheduleFilter>({
     expectedPublishDateStart: currentWeekRange.start,
     expectedPublishDateEnd: currentWeekRange.end,
+    sortField: 'expected_publish_date',
+    sortOrder: 'desc',
   })
   
   // 实际用于查询的筛选条件（只在点击搜索时更新）- 默认同步本周筛选
   const [searchFilter, setSearchFilter] = React.useState<ScheduleFilter>({
     expectedPublishDateStart: currentWeekRange.start,
     expectedPublishDateEnd: currentWeekRange.end,
+    sortField: 'expected_publish_date',
+    sortOrder: 'desc',
   })
   
   const [data, setData] = React.useState<ScheduleItem[]>([])
@@ -270,6 +275,9 @@ export function ScheduleMonitorPage() {
   // 编辑对话框状态
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingItem, setEditingItem] = React.useState<ScheduleItem | null>(null)
+  // 审核对话框状态
+  const [auditDialogOpen, setAuditDialogOpen] = React.useState(false)
+  const [auditingItem, setAuditingItem] = React.useState<ScheduleItem | null>(null)
 
   // 将筛选条件映射为API参数
   const buildSearchParams = (filter: ScheduleFilter, page: number, pageSize: number): ScheduleSearchParams => {
@@ -335,6 +343,12 @@ export function ScheduleMonitorPage() {
     if (filter.videoIds && filter.videoIds.length > 0) {
       params.video_id = filter.videoIds[0] // 简化处理，只取第一个
     }
+    if (filter.sortField) {
+      params.sort_field = filter.sortField
+    }
+    if (filter.sortOrder) {
+      params.sort_order = filter.sortOrder
+    }
 
     return params
   }
@@ -360,6 +374,8 @@ export function ScheduleMonitorPage() {
       auditConclusion: item.review_result === 1 ? '通过' : item.review_result === 0 ? '未通过' : null,
       auditDate: item.review_date,
       operatorModification: item.operation_revision_result === 1 ? '已修改' : item.operation_revision_result === 0 ? '未修改' : null,
+      viewCount: item.view_count,
+      reviewOperator: item.review_operator,
     }
   }
 
@@ -693,6 +709,53 @@ export function ScheduleMonitorPage() {
     }
   }
 
+  // 打开审核对话框
+  const handleAudit = (item: ScheduleItem) => {
+    setAuditingItem(item)
+    setAuditDialogOpen(true)
+  }
+
+  // 保存审核
+  const handleAuditSave = async (requestData: AuditRequest): Promise<boolean> => {
+    try {
+      await apiClient.put<{ response: boolean }>(`/publishPlan/audit/${requestData.id}`, {
+        review_status: requestData.review_status,
+        review_result: requestData.review_result,
+        review_date: requestData.review_date,
+        review_operator: requestData.review_operator,
+        operation_revision_result: requestData.operation_revision_result,
+      })
+      
+      // 显示成功通知
+      setNotification({
+        isVisible: true,
+        message: '审核成功',
+        type: 'success',
+      })
+
+      // 重新获取明细排期表
+      fetchScheduleList()
+
+      // 重新获取概况数据
+      if (showSummary) {
+        fetchSummary()
+      }
+
+      return true
+    } catch (error) {
+      console.error('Audit failed:', error)
+      
+      // 显示失败通知
+      setNotification({
+        isVisible: true,
+        message: '审核失败，请重试',
+        type: 'error',
+      })
+
+      return false
+    }
+  }
+
   return (
     <div className="space-y-6 py-4">
       {/* 排期概况 - 仅 admin 可见 */}
@@ -728,6 +791,7 @@ export function ScheduleMonitorPage() {
         data={data}
         onDelete={handleDelete}
         onEdit={handleEdit}
+        onAudit={handleAudit}
         onExport={handleExport}
         onImport={handleImport}
         isLoading={isTableLoading}
@@ -758,6 +822,14 @@ export function ScheduleMonitorPage() {
           channel: channelOptions,
           operator: operatorOptions,
         }}
+      />
+
+      {/* 审核对话框 */}
+      <ScheduleAuditDialog
+        open={auditDialogOpen}
+        onOpenChange={setAuditDialogOpen}
+        item={auditingItem}
+        onSave={handleAuditSave}
       />
 
       {/* 通知组件 */}

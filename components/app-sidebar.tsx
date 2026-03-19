@@ -72,6 +72,7 @@ const allNavData: NavGroup[] = [
         url: "/monitor/effect",
         icon: BarChart3,
         isActive: false,
+        allowedRoles: ['admin', 'user'], // admin 和 user 都可以访问
       }
     ],
   },

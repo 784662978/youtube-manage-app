@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Download, Trash2, Loader2, Pencil, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal } from 'lucide-react'
+import { Upload, Download, Trash2, Loader2, Pencil, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal, CheckCircle } from 'lucide-react'
 import type { ScheduleItem } from '@/lib/types/monitor'
 import { usePermission } from '@/components/permission-provider'
 import {
@@ -82,6 +82,7 @@ interface ScheduleTableProps {
   data: ScheduleItem[]
   onDelete: (id: string) => void
   onEdit: (item: ScheduleItem) => void
+  onAudit: (item: ScheduleItem) => void
   onExport: () => void
   onImport: () => void
   isLoading?: boolean
@@ -99,6 +100,7 @@ export function ScheduleTable({
   data,
   onDelete,
   onEdit,
+  onAudit,
   onExport,
   onImport,
   isLoading = false,
@@ -163,6 +165,8 @@ export function ScheduleTable({
                   <TableHead className="whitespace-nowrap">发布状态</TableHead>
                   <TableHead className="whitespace-nowrap">版权状态</TableHead>
                   <TableHead className="whitespace-nowrap">视频唯一ID</TableHead>
+                  <TableHead className="whitespace-nowrap">播放量</TableHead>
+                  <TableHead className="whitespace-nowrap">审核人员</TableHead>
                   <TableHead className="whitespace-nowrap">审核状态</TableHead>
                   <TableHead className="whitespace-nowrap">审核结论</TableHead>
                   <TableHead className="whitespace-nowrap">审核日期</TableHead>
@@ -173,7 +177,7 @@ export function ScheduleTable({
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={18} className="h-24 text-center">
+                    <TableCell colSpan={19} className="h-24 text-center">
                       <div className="flex items-center justify-center text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         加载中...
@@ -200,6 +204,7 @@ export function ScheduleTable({
                       </TableCell>
                       <TableCell>{item.copyrightStatus}</TableCell>
                       <TableCell className="font-mono text-xs">{item.videoId}</TableCell>
+                      <TableCell>{item.viewCount?.toLocaleString() || '—'}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -221,7 +226,16 @@ export function ScheduleTable({
                           <Button
                             size="icon-xs"
                             variant="ghost"
+                            onClick={() => onAudit(item)}
+                            title="审核操作"
+                          >
+                            <CheckCircle className="size-3" />
+                          </Button>
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
                             onClick={() => onEdit(item)}
+                            title="编辑操作"
                           >
                             <Pencil className="size-3" />
                           </Button>
@@ -229,6 +243,7 @@ export function ScheduleTable({
                             size="icon-xs"
                             variant="ghost"
                             onClick={() => setDeleteId(item.id)}
+                            title="删除操作"
                           >
                             <Trash2 className="size-3 text-destructive" />
                           </Button>
@@ -238,7 +253,7 @@ export function ScheduleTable({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={18} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={20} className="text-center text-muted-foreground py-12">
                       暂无排期数据，请调整筛选条件
                     </TableCell>
                   </TableRow>

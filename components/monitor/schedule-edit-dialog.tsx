@@ -67,6 +67,7 @@ export function ScheduleEditDialog({
     review_result: '',
     review_date: '',
     operation_revision_result: '',
+    review_operator: '',
   })
 
   // 当 item 变化时初始化表单
@@ -90,6 +91,7 @@ export function ScheduleEditDialog({
         review_result: item.auditConclusion === '通过' ? '1' : item.auditConclusion === '未通过' ? '0' : '',
         review_date: item.auditDate || '',
         operation_revision_result: item.operatorModification === '已修改' ? '1' : item.operatorModification === '未修改' ? '0' : '',
+        review_operator: item.reviewOperator || '',
       })
     }
   }, [item])
@@ -126,6 +128,7 @@ export function ScheduleEditDialog({
           review_result: formData.review_result ? parseInt(formData.review_result) : null,
           review_date: formData.review_date || null,
           operation_revision_result: formData.operation_revision_result ? parseInt(formData.operation_revision_result) : null,
+          review_operator: formData.review_operator || undefined,
         }
       } else {
         // 普通用户编辑：仅部分字段
@@ -195,7 +198,7 @@ export function ScheduleEditDialog({
                     value={formData.content_category_level1}
                     onValueChange={v => handleInputChange('content_category_level1', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder="选择一级分类" />
                     </SelectTrigger>
                     <SelectContent>
@@ -211,7 +214,7 @@ export function ScheduleEditDialog({
                     value={formData.content_category_level2}
                     onValueChange={v => handleInputChange('content_category_level2', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder="选择二级分类" />
                     </SelectTrigger>
                     <SelectContent>
@@ -230,7 +233,7 @@ export function ScheduleEditDialog({
                     value={formData.language}
                     onValueChange={v => handleInputChange('language', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder="选择语种" />
                     </SelectTrigger>
                     <SelectContent>
@@ -257,7 +260,7 @@ export function ScheduleEditDialog({
                     value={formData.copyright_owner}
                     onValueChange={v => handleInputChange('copyright_owner', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder="选择版权方" />
                     </SelectTrigger>
                     <SelectContent>
@@ -273,7 +276,7 @@ export function ScheduleEditDialog({
                     value={formData.expected_publish_channel}
                     onValueChange={v => handleInputChange('expected_publish_channel', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder="选择频道" />
                     </SelectTrigger>
                     <SelectContent>
@@ -292,7 +295,7 @@ export function ScheduleEditDialog({
                     value={formData.is_ypp_approved}
                     onValueChange={v => handleInputChange('is_ypp_approved', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,7 +310,7 @@ export function ScheduleEditDialog({
                     value={formData.expected_operator}
                     onValueChange={v => handleInputChange('expected_operator', v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder="选择运营人员" />
                     </SelectTrigger>
                     <SelectContent>
@@ -329,7 +332,7 @@ export function ScheduleEditDialog({
                 value={formData.publish_status}
                 onValueChange={v => handleInputChange('publish_status', v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className='w-full'>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -344,7 +347,7 @@ export function ScheduleEditDialog({
                 value={formData.copyright_status}
                 onValueChange={v => handleInputChange('copyright_status', v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className='w-full'>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -382,7 +385,7 @@ export function ScheduleEditDialog({
                 value={formData.review_status}
                 onValueChange={v => handleInputChange('review_status', v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className='w-full'>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -400,7 +403,7 @@ export function ScheduleEditDialog({
                 value={formData.review_result}
                 onValueChange={v => handleInputChange('review_result', v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className='w-full'>
                   <SelectValue placeholder="选择审核结论" />
                 </SelectTrigger>
                 <SelectContent>
@@ -419,22 +422,37 @@ export function ScheduleEditDialog({
               />
             </div>
           </div>
+          <div className='grid grid-cols-2 gap-4'>
+            {/* 审核人员 - 仅 admin 可编辑 */}
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="review_operator">审核人员</Label>
+                <Input
+                  id="review_operator"
+                  type="text"
+                  placeholder="请输入审核人员姓名"
+                  value={formData.review_operator}
+                  onChange={e => handleInputChange('review_operator', e.target.value)}
+                />
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label>运营再修改结论</Label>
-            <Select
-              value={formData.operation_revision_result}
-              onValueChange={v => handleInputChange('operation_revision_result', v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="选择修改结论" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">未修改</SelectItem>
-                <SelectItem value="1">已修改</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label>运营再修改结论</Label>
+              <Select
+                value={formData.operation_revision_result}
+                onValueChange={v => handleInputChange('operation_revision_result', v)}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue placeholder="选择修改结论" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">未修改</SelectItem>
+                  <SelectItem value="1">已修改</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            </div>
         </div>
 
         <DialogFooter>
