@@ -23,6 +23,7 @@ export const PERMISSION_CONFIG: Record<UserRole, PermissionConfig> = {
   // user 只能访问运营排期监控页面
   user: {
     allowedPaths: [
+      '/monitor/schedule/',  // 添加尾部斜杠！
       '/monitor/schedule', // 运营排期监控
     ],
     hiddenComponents: [
@@ -33,9 +34,13 @@ export const PERMISSION_CONFIG: Record<UserRole, PermissionConfig> = {
 
 // 路由权限映射
 export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
-  '/Channel/list': ['admin'],
+  '/Channel/list/': ['admin'],        // 添加尾部斜杠
+  '/Channel/list': ['admin'],         // 同时支持
+  '/Channel/monitor/': ['admin'],
   '/Channel/monitor': ['admin'],
-  '/monitor/schedule': ['admin', 'user'], // user 也可以访问
+  '/monitor/schedule/': ['admin', 'user'],
+  '/monitor/schedule': ['admin', 'user'],
+  '/monitor/effect/': ['admin'],
   '/monitor/effect': ['admin'],
 }
 

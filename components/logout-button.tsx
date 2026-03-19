@@ -3,9 +3,11 @@
 import { LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { usePermission } from "@/components/permission-provider"
 
 export function LogoutButton() {
   const router = useRouter()
+  const { clearRole } = usePermission()
 
   const handleLogout = () => {
     // Clear local storage
@@ -13,8 +15,11 @@ export function LogoutButton() {
     localStorage.removeItem("user_id")
     localStorage.removeItem("refresh_token")
     
+    // 清除角色
+    clearRole()
+    
     // Redirect to login
-    router.push("/login")
+    router.push("/login/")
   }
 
   return (

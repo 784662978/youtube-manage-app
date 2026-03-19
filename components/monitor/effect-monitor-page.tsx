@@ -14,8 +14,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Notification } from '@/components/ui/notification'
+import { AlertTriangle, Loader2, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
+import { generateExcelXML, downloadExcel } from '@/lib/excel-helper'
 import type {
   WarningResponse,
   MissingPublishTimeAlert,
@@ -32,6 +34,7 @@ interface PaginatedTableProps<T> {
   isLoading: boolean
   columns: { key: keyof T; header: string; render?: (value: unknown, item: T) => React.ReactNode }[]
   pageSize?: number
+  onExportExcel?: () => void
 }
 
 function PaginatedTable<T extends object>({
@@ -39,6 +42,7 @@ function PaginatedTable<T extends object>({
   isLoading,
   columns,
   pageSize = DEFAULT_PAGE_SIZE,
+  onExportExcel,
 }: PaginatedTableProps<T>) {
   const [page, setPage] = React.useState(1)
   const totalPages = Math.ceil(data.length / pageSize)
@@ -61,6 +65,20 @@ function PaginatedTable<T extends object>({
 
   return (
     <div className="space-y-3">
+      {/* 导出按钮 */}
+      {onExportExcel && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onExportExcel}
+            disabled={isLoading}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            下载Excel
+          </Button>
+        </div>
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -143,6 +161,21 @@ export function EffectMonitorPage() {
   const [rule21Data, setRule21Data] = React.useState<VideoIdAnomalyWebAlert[]>([])
   const [rule22Data, setRule22Data] = React.useState<VideoIdAnomalyDbAlert[]>([])
   const [rule3Data, setRule3Data] = React.useState<ViewCountAnomalyAlert[]>([])
+
+  // 通知状态
+  const [notification, setNotification] = React.useState<{ message: string; type: 'success' | 'error'; visible: boolean }>({
+    message: '',
+    type: 'success',
+    visible: false,
+  })
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type, visible: true })
+  }
+
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, visible: false }))
+  }
 
   // 转换规则1数据
   const transformRule1Data = (items: WarningResponse['rule1_datas']): MissingPublishTimeAlert[] => {
@@ -238,6 +271,50 @@ export function EffectMonitorPage() {
     setDateStart(start.format('YYYY-MM-DD'))
     setDateEnd(end.format('YYYY-MM-DD'))
   }
+
+  // 通用的导出Excel函数
+  const exportToExcel = <T extends object>(
+    data: T[],
+    columns: { key: keyof T; header: string }[],
+    fileName: string
+  ) => {
+    if (data.length === 0) {
+      showNotification('当前表格无数据可下载', 'error')
+      return
+    }
+
+    const excelColumns = columns.map(col => ({
+      header: col.header,
+      key: String(col.key),
+      width: 120,
+    }))
+
+    const excelData = data.map(item => {
+      const row: Record<string, unknown> = {}
+      columns.forEach(col => {
+        row[String(col.key)] = item[col.key]
+      })
+      return row
+    })
+
+    const xmlContent = generateExcelXML([{
+      name: fileName,
+      columns: excelColumns,
+      data: excelData,
+    }])
+
+    downloadExcel(xmlContent, fileName)
+    showNotification('Excel文件已下载', 'success')
+  }
+
+  // 各表格导出处理函数
+  const handleExportRule1 = () => exportToExcel(rule1Data, rule1Columns, '发布时间填写缺失')
+
+  const handleExportRule21 = () => exportToExcel(rule21Data, rule21Columns, '视频ID异常-网页有数据库没有')
+
+  const handleExportRule22 = () => exportToExcel(rule22Data, rule22Columns, '视频ID异常-数据库有网页没有')
+
+  const handleExportRule3 = () => exportToExcel(rule3Data, rule3Columns, '播放量异常')
 
   const rule2Total = rule21Data.length + rule22Data.length
 
@@ -356,6 +433,13 @@ export function EffectMonitorPage() {
 
   return (
     <div className="space-y-6 py-4">
+      {/* 通知组件 */}
+      <Notification
+        message={notification.message}
+        type={notification.type}
+        isVisible={notification.visible}
+        onClose={hideNotification}
+      />
       {/* 日期筛选器 */}
       <Card>
         <CardHeader className="pb-4">
@@ -412,6 +496,7 @@ export function EffectMonitorPage() {
               data={rule1Data}
               isLoading={isLoading}
               columns={rule1Columns}
+              onExportExcel={handleExportRule1}
             />
           </CardContent>
         </Card>
@@ -437,6 +522,7 @@ export function EffectMonitorPage() {
                 data={rule21Data}
                 isLoading={isLoading}
                 columns={rule21Columns}
+                onExportExcel={handleExportRule21}
               />
             </div>
 
@@ -447,6 +533,7 @@ export function EffectMonitorPage() {
                 data={rule22Data}
                 isLoading={isLoading}
                 columns={rule22Columns}
+                onExportExcel={handleExportRule22}
               />
             </div>
           </CardContent>
@@ -470,6 +557,7 @@ export function EffectMonitorPage() {
               data={rule3Data}
               isLoading={isLoading}
               columns={rule3Columns}
+              onExportExcel={handleExportRule3}
             />
           </CardContent>
         </Card>

@@ -55,8 +55,8 @@ export function LoginForm({
       // 登录成功后跳转
       // user 角色跳转到排期监控，admin 跳转到频道列表
       const targetPath = state.data.user_role === 'user' 
-        ? "/monitor/schedule" 
-        : "/Channel/list"
+        ? "/monitor/schedule/"
+        : "/Channel/list/"
       router.replace(targetPath)
     }
   }, [state, router, setRole])

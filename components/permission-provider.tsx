@@ -41,16 +41,34 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     if (isLoading) return
 
     // 跳过公开路径
-    if (pathname === "/login") return
+    // 关键修改：跳过登录页面
+    if (pathname === "/login" || pathname === "/login/") return
+
+    // 检查 token 是否存在
+    const token = localStorage.getItem("jwt_token")
+    if (!token) {
+      // 没有 token，不进行权限检查，让 AuthProvider 处理
+      console.log('[PermissionProvider] 没有 token，跳过权限检查')
+      return
+    }
 
     // 检查是否有权限访问当前路径
-    if (!hasPathPermission(role, pathname)) {
+    const hasPermission = hasPathPermission(role, pathname)
+    console.log('[PermissionProvider] 权限检查:', { 
+      role, 
+      pathname, 
+      hasPermission 
+    })
+
+    if (!hasPermission) {
       // 如果是 user 角色，重定向到运营排期监控页面
       if (role === "user") {
-        router.replace("/monitor/schedule")
+        console.log('[PermissionProvider] 重定向到 /monitor/schedule/')
+        router.replace("/monitor/schedule/")
       } else {
-        // 其他情况重定向到首页
-        router.replace("/Channel/list")
+        // 其他情况重定向到频道列表
+        console.log('[PermissionProvider] 重定向到 /Channel/list/')
+        router.replace("/Channel/list/")
       }
     }
   }, [pathname, role, isLoading, router])
