@@ -171,13 +171,13 @@ export function ScheduleTable({
                   <TableHead className="whitespace-nowrap">审核结论</TableHead>
                   <TableHead className="whitespace-nowrap">审核日期</TableHead>
                   <TableHead className="whitespace-nowrap">运营再修改结论</TableHead>
-                  <TableHead className="whitespace-nowrap sticky right-0 bg-background z-10">操作</TableHead>
+                  <TableHead className="whitespace-nowrap sticky right-0 bg-background z-10 w-[120px] min-w-[120px] shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={19} className="h-24 text-center">
+                    <TableCell colSpan={20} className="h-24 text-center">
                       <div className="flex items-center justify-center text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         加载中...
@@ -205,6 +205,7 @@ export function ScheduleTable({
                       <TableCell>{item.copyrightStatus}</TableCell>
                       <TableCell className="font-mono text-xs">{item.videoId}</TableCell>
                       <TableCell>{item.viewCount?.toLocaleString() || '—'}</TableCell>
+                      <TableCell>{item.reviewOperator || '—'}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -221,7 +222,7 @@ export function ScheduleTable({
                       <TableCell>{item.auditConclusion || '—'}</TableCell>
                       <TableCell>{item.auditDate || '—'}</TableCell>
                       <TableCell>{item.operatorModification || '—'}</TableCell>
-                      <TableCell className="sticky right-0 bg-background z-10">
+                      <TableCell className="sticky right-0 bg-background z-10 w-[120px] min-w-[120px] shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                         <div className="flex items-center gap-1">
                           <Button
                             size="icon-xs"
