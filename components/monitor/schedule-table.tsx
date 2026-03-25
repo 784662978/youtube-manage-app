@@ -43,7 +43,7 @@ function generatePageNumbers(current: number, total: number): (number | 'ellipsi
   }
 
   const pages: (number | 'ellipsis')[] = []
-  
+
   // 始终显示第1页
   pages.push(1)
 
@@ -229,6 +229,7 @@ export function ScheduleTable({
                             variant="ghost"
                             onClick={() => onAudit(item)}
                             title="审核操作"
+                            className='cursor-pointer'
                           >
                             <CheckCircle className="size-3" />
                           </Button>
@@ -237,17 +238,21 @@ export function ScheduleTable({
                             variant="ghost"
                             onClick={() => onEdit(item)}
                             title="编辑操作"
+                            className='cursor-pointer'
                           >
                             <Pencil className="size-3" />
                           </Button>
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            onClick={() => setDeleteId(item.id)}
-                            title="删除操作"
-                          >
-                            <Trash2 className="size-3 text-destructive" />
-                          </Button>
+                          {isAdmin &&
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              onClick={() => setDeleteId(item.id)}
+                              title="删除操作"
+                              className='cursor-pointer'
+                            >
+                              <Trash2 className="size-3 text-destructive" />
+                            </Button>
+                          }
                         </div>
                       </TableCell>
                     </TableRow>
