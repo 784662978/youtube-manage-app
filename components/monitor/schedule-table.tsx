@@ -152,6 +152,7 @@ export function ScheduleTable({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="whitespace-nowrap">剪辑日期</TableHead>
                   <TableHead className="whitespace-nowrap">预计发布日期</TableHead>
                   <TableHead className="whitespace-nowrap">实际发布日期</TableHead>
                   <TableHead className="whitespace-nowrap">内容一级分类</TableHead>
@@ -177,7 +178,7 @@ export function ScheduleTable({
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={20} className="h-24 text-center">
+                    <TableCell colSpan={21} className="h-24 text-center">
                       <div className="flex items-center justify-center text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         加载中...
@@ -187,6 +188,7 @@ export function ScheduleTable({
                 ) : data.length > 0 ? (
                   data.map((item) => (
                     <TableRow key={item.id}>
+                      <TableCell>{item.editingDate || '—'}</TableCell>
                       <TableCell>{item.expectedPublishDate}</TableCell>
                       <TableCell>{item.actualPublishDate || '—'}</TableCell>
                       <TableCell>{item.contentPrimaryCategory}</TableCell>
@@ -259,7 +261,7 @@ export function ScheduleTable({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={20} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={21} className="text-center text-muted-foreground py-12">
                       暂无排期数据，请调整筛选条件
                     </TableCell>
                   </TableRow>

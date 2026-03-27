@@ -44,6 +44,7 @@ const EXCEL_COLUMN_MAPPING: Record<string, keyof ScheduleItem> = {
   '审核结论': 'auditConclusion',
   '审核日期': 'auditDate',
   '运营再修改结论': 'operatorModification',
+  '剪辑日期': 'editingDate',
 }
 
 // 必填字段
@@ -65,6 +66,7 @@ const DATE_FIELDS: (keyof ScheduleItem)[] = [
   'expectedPublishDate',
   'actualPublishDate',
   'auditDate',
+  'editingDate',
 ]
 
 // 预览表格显示的列（按顺序）
@@ -87,6 +89,7 @@ const PREVIEW_COLUMNS: { excelCol: string; field: keyof ScheduleItem; width?: st
   { excelCol: '审核结论', field: 'auditConclusion', width: 'w-20' },
   { excelCol: '审核日期', field: 'auditDate', width: 'w-28' },
   { excelCol: '运营再修改结论', field: 'operatorModification', width: 'w-28' },
+  { excelCol: '剪辑日期', field: 'editingDate', width: 'w-28' },
 ]
 
 // 格式化单元格值显示
@@ -316,6 +319,7 @@ export function ExcelImportDialog({
         auditConclusion: (r.data!.auditConclusion as '通过' | '未通过') || null,
         auditDate: r.data!.auditDate || null,
         operatorModification: (r.data!.operatorModification as '已修改' | '未修改') || null,
+        editingDate: r.data!.editingDate || null,
       }))
 
     setIsImporting(true)

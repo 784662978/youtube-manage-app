@@ -19,6 +19,7 @@ export interface ScheduleItem {
   auditConclusion: '通过' | '未通过' | null // 审核结论
   auditDate: string | null // 审核日期
   operatorModification: '已修改' | '未修改' | null // 运营再修改结论
+  editingDate: string | null // 剪辑日期
   viewCount?: number // 播放量
   reviewOperator?: string // 审核人员
 }
@@ -80,6 +81,8 @@ export interface ScheduleFilter {
   auditConclusion?: string
   auditDate?: string
   operatorModification?: string
+  editingDateStart?: string
+  editingDateEnd?: string
   sortField?: 'expected_publish_date' | 'view_count' // 排序字段
   sortOrder?: 'asc' | 'desc' // 排序方式
 }
@@ -105,6 +108,8 @@ export interface ScheduleSearchParams {
   review_status?: string
   review_result?: string
   operation_revision_result?: string
+  editing_date_start?: string
+  editing_date_end?: string
   page?: number
   page_size?: number
   sort_field?: 'expected_publish_date' | 'view_count' // 排序字段
@@ -131,6 +136,7 @@ export interface ScheduleItemResponse {
   review_result: number | null // 0, 1
   review_date: string | null
   operation_revision_result: number | null // 0, 1
+  editing_date: string | null
   view_count?: number // 播放量
   review_operator?: string // 审核人员
 }
@@ -171,6 +177,7 @@ export interface ImportDataItem {
   review_result: number | null // 0, 1
   review_date: string | null
   operation_revision_result: number | null // 0, 1
+  editing_date: string | null
 }
 
 export interface ImportRequest {
@@ -334,6 +341,7 @@ export interface AdminEditRequest {
   review_date: string | null
   operation_revision_result: number | null
   review_operator?: string // 审核人员
+  editing_date: string | null
 }
 
 // 普通用户编辑请求参数
@@ -347,6 +355,7 @@ export interface UserEditRequest {
   review_result: number | null
   review_date: string | null
   operation_revision_result: number | null
+  editing_date: string | null
 }
 
 // 审核请求参数

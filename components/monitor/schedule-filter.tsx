@@ -110,6 +110,22 @@ export function ScheduleFilterBar({
               onChange={(e) => handleDateChange('actualPublishDateEnd', e.target.value)}
             />
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">剪辑日期</span>
+            <Input
+              type="date"
+              className="w-36 cursor-pointer"
+              value={filter.editingDateStart || ''}
+              onChange={(e) => handleDateChange('editingDateStart', e.target.value)}
+            />
+            <span className="text-muted-foreground">—</span>
+            <Input
+              type="date"
+              className="w-36 cursor-pointer"
+              value={filter.editingDateEnd || ''}
+              onChange={(e) => handleDateChange('editingDateEnd', e.target.value)}
+            />
+          </div>
         </div>
 
         {/* 第二行：下拉筛选 */}

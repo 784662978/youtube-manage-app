@@ -68,6 +68,7 @@ export function ScheduleEditDialog({
     review_date: '',
     operation_revision_result: '',
     review_operator: '',
+    editing_date: '',
   })
 
   // 当 item 变化时初始化表单
@@ -92,6 +93,7 @@ export function ScheduleEditDialog({
         review_date: item.auditDate || '',
         operation_revision_result: item.operatorModification === '已修改' ? '1' : item.operatorModification === '未修改' ? '0' : '',
         review_operator: item.reviewOperator || '',
+        editing_date: item.editingDate || '',
       })
     }
   }, [item])
@@ -129,6 +131,7 @@ export function ScheduleEditDialog({
           review_date: formData.review_date || null,
           operation_revision_result: formData.operation_revision_result ? parseInt(formData.operation_revision_result) : null,
           review_operator: formData.review_operator || undefined,
+          editing_date: formData.editing_date || null,
         }
       } else {
         // 普通用户编辑：仅部分字段
@@ -142,6 +145,7 @@ export function ScheduleEditDialog({
           review_result: formData.review_result ? parseInt(formData.review_result) : null,
           review_date: formData.review_date || null,
           operation_revision_result: formData.operation_revision_result ? parseInt(formData.operation_revision_result) : null,
+          editing_date: formData.editing_date || null,
         }
       }
 
@@ -451,6 +455,15 @@ export function ScheduleEditDialog({
                   <SelectItem value="1">已修改</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editing_date">剪辑日期</Label>
+              <Input
+                id="editing_date"
+                type="date"
+                value={formData.editing_date}
+                onChange={e => handleInputChange('editing_date', e.target.value)}
+              />
             </div>
             </div>
         </div>

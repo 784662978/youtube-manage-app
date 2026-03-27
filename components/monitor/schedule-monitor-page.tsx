@@ -107,6 +107,7 @@ const mockScheduleData: ScheduleItem[] = [
     auditConclusion: null,
     auditDate: null,
     operatorModification: null,
+    editingDate: null,
   },
   {
     id: '2',
@@ -127,6 +128,7 @@ const mockScheduleData: ScheduleItem[] = [
     auditConclusion: '通过',
     auditDate: '2026-01-19',
     operatorModification: '已修改',
+    editingDate: '2026-01-18',
   },
 ]
 
@@ -163,6 +165,7 @@ function exportToExcel(data: ScheduleItem[], filename: string = '排期明细') 
     { key: 'auditConclusion', label: '审核结论' },
     { key: 'auditDate', label: '审核日期' },
     { key: 'operatorModification', label: '运营再修改结论' },
+    { key: 'editingDate', label: '剪辑日期' },
   ]
 
   // 构建CSV内容（使用UTF-8 BOM以确保Excel正确识别中文）
@@ -337,6 +340,12 @@ export function ScheduleMonitorPage() {
     if (filter.operatorModification) {
       params.operation_revision_result = filter.operatorModification
     }
+    if (filter.editingDateStart) {
+      params.editing_date_start = filter.editingDateStart
+    }
+    if (filter.editingDateEnd) {
+      params.editing_date_end = filter.editingDateEnd
+    }
     if (filter.dramaNames && filter.dramaNames.length > 0) {
       params.video_name = filter.dramaNames[0] // 简化处理，只取第一个
     }
@@ -374,6 +383,7 @@ export function ScheduleMonitorPage() {
       auditConclusion: item.review_result === 1 ? '通过' : item.review_result === 0 ? '未通过' : null,
       auditDate: item.review_date,
       operatorModification: item.operation_revision_result === 1 ? '已修改' : item.operation_revision_result === 0 ? '未修改' : null,
+      editingDate: item.editing_date,
       viewCount: item.view_count,
       reviewOperator: item.review_operator,
     }
@@ -400,6 +410,7 @@ export function ScheduleMonitorPage() {
       review_result: item.auditConclusion === '通过' ? 1 : item.auditConclusion === '未通过' ? 0 : null,
       review_date: item.auditDate,
       operation_revision_result: item.operatorModification === '已修改' ? 1 : item.operatorModification === '未修改' ? 0 : 0,
+      editing_date: item.editingDate,
     }
   }
 
