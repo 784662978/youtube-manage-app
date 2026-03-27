@@ -28,7 +28,9 @@ import {
   ChevronsRight,
   MoreHorizontal,
   Search,
+  FileDown,
 } from "lucide-react"
+import { generateExcelXML, downloadExcel } from "@/lib/excel-helper"
 import type {
   QixingVideo,
   ApiResponse,
@@ -194,6 +196,32 @@ export function QixingVideoList({ languages, onNotification }: QixingVideoListPr
         <Button size="sm" onClick={handleSearch} disabled={loading}>
           {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Search className="mr-2 size-4" />}
           搜索
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const xml = generateExcelXML([{
+              name: "七星剧目",
+              columns: [
+                { header: "ID", key: "id", type: "Number" },
+                { header: "Serial ID", key: "serial_id", type: "Number" },
+                { header: "App ID", key: "app_id" },
+                { header: "标题", key: "title" },
+                { header: "标签", key: "tag" },
+                { header: "语言", key: "language", type: "Number" },
+                { header: "拉取日期", key: "pull_date" },
+                { header: "序号", key: "pull_sequence", type: "Number" },
+              ],
+              data,
+            }])
+            downloadExcel(xml, "七星剧目数据")
+          }}
+          disabled={loading || data.length === 0}
+        >
+          <FileDown className="mr-2 size-4" />
+          导出Excel
         </Button>
       </div>
 

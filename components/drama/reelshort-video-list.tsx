@@ -31,7 +31,9 @@ import {
   Search,
   Eye,
   ImageIcon,
+  FileDown,
 } from "lucide-react"
+import { generateExcelXML, downloadExcel } from "@/lib/excel-helper"
 import type {
   ReelshortVideo,
   ReelshortVideoParams,
@@ -226,6 +228,32 @@ export function ReelshortVideoList({ languages, onNotification }: ReelshortVideo
           <Button size="sm" onClick={handleSearch} disabled={loading}>
             {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Search className="mr-2 size-4" />}
             搜索
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const xml = generateExcelXML([{
+                name: "Reelshort",
+                columns: [
+                  { header: "ID", key: "id", type: "Number" },
+                  { header: "Book ID", key: "book_id" },
+                  { header: "标题", key: "title" },
+                  { header: "语言", key: "language" },
+                  { header: "拉取日期", key: "pull_date" },
+                  { header: "榜单", key: "pull_sort" },
+                  { header: "序号", key: "pull_sequence", type: "Number" },
+                  { header: "R状态", key: "review_status" },
+                ],
+                data,
+              }])
+              downloadExcel(xml, "Reelshort选剧数据")
+            }}
+            disabled={loading || data.length === 0}
+          >
+            <FileDown className="mr-2 size-4" />
+            导出Excel
           </Button>
         </div>
 

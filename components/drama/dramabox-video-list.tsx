@@ -30,7 +30,9 @@ import {
   MoreHorizontal,
   Search,
   Download,
+  FileDown,
 } from "lucide-react"
+import { generateExcelXML, downloadExcel } from "@/lib/excel-helper"
 import type {
   DramaboxVideo,
   ApiResponse,
@@ -249,6 +251,37 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
           {pulling ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
           拉取数据
         </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const xml = generateExcelXML([{
+              name: "Dramabox",
+              columns: [
+                { header: "ID", key: "id", type: "Number" },
+                { header: "Drama ID", key: "drama_id", type: "Number" },
+                { header: "API List ID", key: "api_list_id", type: "Number" },
+                { header: "剧名", key: "drama_name" },
+                { header: "海外剧名", key: "drama_oversea_name" },
+                { header: "类型", key: "exclusive_type" },
+                { header: "语言", key: "languages" },
+                { header: "选剧时间", key: "curate_time" },
+                { header: "拉取日期", key: "pull_date" },
+                { header: "序号", key: "pull_sequence", type: "Number" },
+              ],
+              data: data.map(item => ({
+                ...item,
+                curate_time: item.curate_time ? new Date(item.curate_time).toISOString().slice(0, 10) : "-",
+              }))
+            }])
+            downloadExcel(xml, "Dramabox选剧数据")
+          }}
+          disabled={loading || data.length === 0}
+        >
+          <FileDown className="mr-2 size-4" />
+          导出Excel
+        </Button>
       </div>
 
       {/* 列表 */}
@@ -263,7 +296,8 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
               <TableHead className="whitespace-nowrap">海外剧名</TableHead>
               <TableHead className="whitespace-nowrap">类型</TableHead>
               <TableHead className="whitespace-nowrap">语言</TableHead>
-              <TableHead className="whitespace-nowrap">排期时间</TableHead>
+              <TableHead className="whitespace-nowrap">选剧时间</TableHead>
+              <TableHead className="whitespace-nowrap">拉取日期</TableHead>
               <TableHead className="whitespace-nowrap">序号</TableHead>
             </TableRow>
           </TableHeader>
@@ -298,8 +332,9 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{item.languages}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {item.curate_time ? new Date(item.curate_time * 1000).toLocaleDateString("zh-CN") : "-"}
+                    {item.curate_time ? new Date(item.curate_time).toISOString().slice(0, 10) : "-"}
                   </TableCell>
+                  <TableCell className="whitespace-nowrap">{item.pull_date || "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">{item.pull_sequence}</TableCell>
                 </TableRow>
               ))

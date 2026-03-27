@@ -86,6 +86,7 @@ export interface DramaboxVideo {
   languages: string
   curate_time: number
   updated_at: string
+  pull_date: string
   pull_sequence: number
 }
 

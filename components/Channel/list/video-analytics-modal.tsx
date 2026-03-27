@@ -168,7 +168,7 @@ export function VideoAnalyticsModal({ isOpen, onClose, videoId, videoTitle }: Vi
             data: filteredData
           }
         ])
-        downloadExcel(xml, `analytics_${videoId}_${dayjs().format("YYYYMMDD")}.xls`)
+        downloadExcel(xml, `analytics_${videoId}_${dayjs().format("YYYYMMDD")}`)
       } catch (e) {
         console.error("Export failed", e)
       } finally {

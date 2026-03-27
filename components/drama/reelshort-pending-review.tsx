@@ -33,6 +33,7 @@ export function ReelshortPendingReview({ languages, onNotification }: ReelshortP
   const [submitting, setSubmitting] = React.useState(false)
   const [pullCount, setPullCount] = React.useState("30")
   const [pulling, setPulling] = React.useState(false)
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
 
   // 实际查询条件
   const [searchLanguage, setSearchLanguage] = React.useState("")
@@ -105,17 +106,16 @@ export function ReelshortPendingReview({ languages, onNotification }: ReelshortP
     }
   }
 
-  const handleSubmit = async () => {
-    if (exclusiveSet.size === 0) {
-      onNotification("请至少选择一条数据进行审核", "error")
-      return
-    }
+  const handleConfirmSubmit = async () => {
+    setConfirmOpen(false)
+    if (data.length === 0) return
     setSubmitting(true)
     try {
-      const bookIds = Array.from(exclusiveSet)
+      const allBookIds = data.map((item) => item.book_id)
+      const no_r = allBookIds.filter((id) => !exclusiveSet.has(id))
       const body: BatchReviewRequest = {
-        has_r: bookIds,
-        no_r: [],
+        has_r: Array.from(exclusiveSet),
+        no_r,
       }
       const result = await apiClient.post<ApiResponse<BatchReviewResponse>>(
         "/reelshort/videos/batch-review",
@@ -123,7 +123,8 @@ export function ReelshortPendingReview({ languages, onNotification }: ReelshortP
       )
       const resp = result.response
       const msg = [
-        resp.has_r_updated > 0 ? `已标记: ${resp.has_r_updated} 条` : null,
+        resp.has_r_updated > 0 ? `独家已标记: ${resp.has_r_updated} 条` : null,
+        resp.no_r_updated > 0 ? `非独家已标记: ${resp.no_r_updated} 条` : null,
         resp.not_found?.length > 0 ? `未找到: ${resp.not_found.length} 条` : null,
       ].filter(Boolean).join("，")
       onNotification(msg || "操作完成", "success")
@@ -180,13 +181,20 @@ export function ReelshortPendingReview({ languages, onNotification }: ReelshortP
         <div className="flex-1" />
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="default">已选: {exclusiveSet.size}</Badge>
+          <Badge variant="default">独家: {exclusiveSet.size}</Badge>
+          <Badge variant="secondary">非独家: {data.length - exclusiveSet.size}</Badge>
         </div>
 
         <Button
           size="sm"
-          onClick={handleSubmit}
-          disabled={submitting || exclusiveSet.size === 0}
+          onClick={() => {
+            if (data.length === 0) {
+              onNotification("暂无待审核数据", "error")
+              return
+            }
+            setConfirmOpen(true)
+          }}
+          disabled={submitting}
         >
           {submitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle className="mr-2 size-4" />}
           提交审核
@@ -274,6 +282,34 @@ export function ReelshortPendingReview({ languages, onNotification }: ReelshortP
       {!loading && data.length > 0 && (
         <div className="text-sm text-muted-foreground">
           共 {data.length} 条待审核数据
+        </div>
+      )}
+
+      {/* 二次确认弹窗 */}
+      {confirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setConfirmOpen(false)}
+        >
+          <div
+            className="bg-background border rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-sm font-medium">确认提交审核</div>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <div>勾选独家：<span className="text-foreground font-medium">{exclusiveSet.size}</span> 条</div>
+              <div>未勾选（默认非独家）：<span className="text-foreground font-medium">{data.length - exclusiveSet.size}</span> 条</div>
+              <div className="pt-1 border-t">共 <span className="text-foreground font-medium">{data.length}</span> 条待提交</div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setConfirmOpen(false)}>
+                取消
+              </Button>
+              <Button size="sm" onClick={handleConfirmSubmit}>
+                确认提交
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
