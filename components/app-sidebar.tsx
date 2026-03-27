@@ -4,7 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
-import { List, SquareActivity, Monitor, BarChart3 } from 'lucide-react'
+import { List, SquareActivity, Monitor, BarChart3, Languages } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -65,15 +65,39 @@ const allNavData: NavGroup[] = [
         url: "/monitor/schedule",
         icon: Monitor,
         isActive: false,
-        allowedRoles: ['admin', 'user'], // admin 和 user 都可以访问
+        allowedRoles: ['admin', 'user'],
       },
       {
         title: "运营效果监控",
         url: "/monitor/effect",
         icon: BarChart3,
         isActive: false,
-        allowedRoles: ['admin', 'user'], // admin 和 user 都可以访问
+        allowedRoles: ['admin', 'user'],
       }
+    ],
+  },
+  {
+    title: "语言配置",
+    url: "/language",
+    items: [
+      {
+        title: "Reelshort 语言",
+        url: "/language/reelshort",
+        icon: Languages,
+        isActive: false,
+      },
+      {
+        title: "七星语言",
+        url: "/language/qixing",
+        icon: Languages,
+        isActive: false,
+      },
+      {
+        title: "Dramabox 语言",
+        url: "/language/dramabox",
+        icon: Languages,
+        isActive: false,
+      },
     ],
   },
 ]
