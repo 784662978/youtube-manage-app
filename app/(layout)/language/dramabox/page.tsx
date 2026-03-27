@@ -31,8 +31,8 @@ const dramaboxConfig: LanguageModuleConfig<DramaboxLanguageItem> = {
     },
   ],
   getDisplayValue: (item, key) => {
-    const record = item as Record<string, unknown>
-    return record[key] ?? ""
+    const value = (item as unknown as Record<string, unknown>)[key]
+    return (typeof value === "string" || typeof value === "number" ? value : "") as string | number
   },
   getDefaultFormData: () => ({
     zh_name: "",

@@ -4,7 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
-import { List, SquareActivity, Monitor, BarChart3, Languages } from 'lucide-react'
+import { List, SquareActivity, Monitor, BarChart3, Film, Sparkle, Drama } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -83,19 +83,43 @@ const allNavData: NavGroup[] = [
       {
         title: "Reelshort 语言",
         url: "/language/reelshort",
-        icon: Languages,
+        icon: Film,
         isActive: false,
       },
       {
         title: "七星语言",
         url: "/language/qixing",
-        icon: Languages,
+        icon: Sparkle,
         isActive: false,
       },
       {
         title: "Dramabox 语言",
         url: "/language/dramabox",
-        icon: Languages,
+        icon: Drama,
+        isActive: false,
+      },
+    ],
+  },
+  {
+    title: "选剧频道",
+    url: "/drama",
+    items: [
+      {
+        title: "Reelshort",
+        url: "/drama/reelshort",
+        icon: Film,
+        isActive: false,
+      },
+      {
+        title: "七星剧目",
+        url: "/drama/qixing",
+        icon: Sparkle,
+        isActive: false,
+      },
+      {
+        title: "Dramabox",
+        url: "/drama/dramabox",
+        icon: Drama,
         isActive: false,
       },
     ],

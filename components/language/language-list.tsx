@@ -41,13 +41,13 @@ import type {
   ApiResponse,
 } from "@/lib/types/language"
 
-interface AddLanguageModalProps {
-  config: LanguageModuleConfig<LanguageItem>
+interface AddLanguageModalProps<T extends LanguageItem> {
+  config: LanguageModuleConfig<T>
   onSuccess: () => void
   onNotification: (message: string, type: NotificationType) => void
 }
 
-export function AddLanguageModal({ config, onSuccess, onNotification }: AddLanguageModalProps) {
+export function AddLanguageModal<T extends LanguageItem>({ config, onSuccess, onNotification }: AddLanguageModalProps<T>) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [formData, setFormData] = React.useState<Record<string, string | number>>(
