@@ -38,6 +38,7 @@ import type {
   ApiResponse,
   PageResponse,
 } from "@/lib/types/drama"
+import dayjs from "dayjs"
 
 interface DramaboxVideoListProps {
   languages: { zh_name: string; display_name: string }[]
@@ -272,7 +273,7 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
               ],
               data: data.map(item => ({
                 ...item,
-                curate_time: item.curate_time ? new Date(item.curate_time).toISOString().slice(0, 10) : "-",
+                curate_time: item.curate_time ? dayjs(item.curate_time).format("YYYY-MM-DD") : "-",
               }))
             }])
             downloadExcel(xml, "Dramabox选剧数据")
@@ -332,7 +333,8 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{item.languages}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {item.curate_time ? new Date(item.curate_time).toISOString().slice(0, 10) : "-"}
+                    {/* 使用dayjs让时间戳转为日期格式 */}
+                    {item.curate_time ? dayjs(item.curate_time).format("YYYY-MM-DD") : "-"}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{item.pull_date || "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">{item.pull_sequence}</TableCell>
