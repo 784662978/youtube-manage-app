@@ -56,6 +56,12 @@ export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   '/drama/qixing': ['admin'],
   '/drama/dramabox/': ['admin'],
   '/drama/dramabox': ['admin'],
+  '/material/library/': ['admin'],
+  '/material/library': ['admin'],
+  '/material/channel/': ['admin'],
+  '/material/channel': ['admin'],
+  '/remix/task/': ['admin'],
+  '/remix/task': ['admin'],
 }
 
 // 检查用户是否有权限访问某个路径
