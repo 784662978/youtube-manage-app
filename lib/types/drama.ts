@@ -38,6 +38,8 @@ export interface ReelshortVideoParams {
   language?: string
   from?: string
   to?: string
+  pull_sort?: 'time' | 'money'
+  only_new_money_list?: string
   page?: number
   page_size?: number
 }

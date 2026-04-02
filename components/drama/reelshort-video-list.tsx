@@ -56,6 +56,16 @@ const R_STATUS_OPTIONS: { value: RStatus | ""; label: string }[] = [
   { value: "no_r", label: "无R" },
 ]
 
+const PULL_SORT_OPTIONS = [
+  { value: "time", label: "时间排序" },
+  { value: "money", label: "收益排序" },
+]
+
+const ONLY_NEW_MONEY_OPTIONS = [
+  { value: "true", label: "是" },
+  { value: "false", label: "否" },
+]
+
 const rStatusBadge: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "待识别", variant: "outline" },
   has_r: { label: "有R", variant: "default" },
@@ -111,6 +121,8 @@ export function ReelshortVideoList({ languages, onNotification }: ReelshortVideo
   const [language, setLanguage] = React.useState("")
   const [fromDate, setFromDate] = React.useState("")
   const [toDate, setToDate] = React.useState("")
+  const [pullSort, setPullSort] = React.useState("")
+  const [onlyNewMoneyList, setOnlyNewMoneyList] = React.useState("")
 
   // 实际查询用的条件（仅在搜索时更新）
   const [searchParams, setSearchParams] = React.useState({
@@ -118,6 +130,8 @@ export function ReelshortVideoList({ languages, onNotification }: ReelshortVideo
     language: "",
     fromDate: "",
     toDate: "",
+    pullSort: "",
+    onlyNewMoneyList: "",
   })
 
   // 封面预览
@@ -131,6 +145,8 @@ export function ReelshortVideoList({ languages, onNotification }: ReelshortVideo
       if (searchParams.language) params.language = searchParams.language
       if (searchParams.fromDate) params.from = searchParams.fromDate
       if (searchParams.toDate) params.to = searchParams.toDate
+      if (searchParams.pullSort) params.pull_sort = searchParams.pullSort as 'time' | 'money'
+      if (searchParams.onlyNewMoneyList) params.only_new_money_list = searchParams.onlyNewMoneyList
 
       const result = await apiClient.get<ApiResponse<PageResponse<ReelshortVideo>>>(
         "/reelshort/videos",
@@ -165,6 +181,8 @@ export function ReelshortVideoList({ languages, onNotification }: ReelshortVideo
       language,
       fromDate,
       toDate,
+      pullSort,
+      onlyNewMoneyList,
     })
     setPage(1)
   }
@@ -182,48 +200,91 @@ export function ReelshortVideoList({ languages, onNotification }: ReelshortVideo
       <div className="space-y-4">
         {/* 筛选栏 */}
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={rStatus || "__all__"} onValueChange={(v) => setRStatus(v === "__all__" ? "" : (v as RStatus))}>
-            <SelectTrigger className="w-32.5">
-              <SelectValue placeholder="R状态" />
-            </SelectTrigger>
-            <SelectContent>
-              {R_STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value || "__all__"}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">R状态</span>
+            <Select value={rStatus || "__all__"} onValueChange={(v) => setRStatus(v === "__all__" ? "" : (v as RStatus))}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="R状态" />
+              </SelectTrigger>
+              <SelectContent>
+                {R_STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value || "__all__"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={language || "__all__"} onValueChange={(v) => setLanguage(v === "__all__" ? "" : v)}>
-            <SelectTrigger className="w-32.5">
-              <SelectValue placeholder="语言" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">全部语言</SelectItem>
-              {languages.map((lang) => (
-                <SelectItem key={lang.code} value={lang.code}>
-                  {lang.display_name || lang.code}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">语言</span>
+            <Select value={language || "__all__"} onValueChange={(v) => setLanguage(v === "__all__" ? "" : v)}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="语言" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">全部语言</SelectItem>
+                {languages.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.display_name || lang.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="w-40"
-            placeholder="开始日期"
-          />
-          <span className="text-muted-foreground text-sm">至</span>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="w-40"
-            placeholder="结束日期"
-          />
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">日期范围</span>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-36"
+              placeholder="开始日期"
+            />
+            <span className="text-muted-foreground text-sm">至</span>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-36"
+              placeholder="结束日期"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">拉取方式</span>
+            <Select value={pullSort || "__all__"} onValueChange={(v) => setPullSort(v === "__all__" ? "" : v)}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="拉取方式" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">全部</SelectItem>
+                {PULL_SORT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">新收益榜</span>
+            <Select value={onlyNewMoneyList || "__all__"} onValueChange={(v) => setOnlyNewMoneyList(v === "__all__" ? "" : v)}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="新收益榜" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">全部</SelectItem>
+                {ONLY_NEW_MONEY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <Button size="sm" onClick={handleSearch} disabled={loading}>
             {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Search className="mr-2 size-4" />}
