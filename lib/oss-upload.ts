@@ -49,9 +49,9 @@ async function createHmacSha1(key: string, data: string): Promise<string> {
  */
 export async function uploadFileToOss(file: File, ossPath: string): Promise<void> {
   const credentials = await getStsCredentials()
-  const { bucket_name, endpoint, access_key_id, access_key_secret, security_token } = credentials
+  const { bucket_name, endpoint, access_key_id, access_key_secret, security_token, upload_path } = credentials
 
-  const url = `https://${bucket_name}.${endpoint}/${ossPath}`
+  const url = `https://${bucket_name}.${endpoint}/${upload_path}/${ossPath}`
 
   const canonicalizedHeaders = `x-oss-object-acl:public-read\nx-oss-security-token:${security_token}\n`
   const stringToSign = [
@@ -105,5 +105,5 @@ export function getVideoDuration(file: File): Promise<number> {
  * 格式: material/{channel}/{language}/{filename}
  */
 export function buildOssPath(channel: string, language: string, fileName: string): string {
-  return `material/${channel}/${language}/${fileName}`
+  return `${channel}/${language}/${fileName}`
 }
