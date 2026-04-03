@@ -31,7 +31,18 @@ import {
   MoreHorizontal,
   Search,
   Trash2,
+  AlertTriangle,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { MaterialItem, MaterialListParams } from "@/lib/types/material"
 import type { ApiResponse, PageResponse } from "@/lib/types/drama"
 
@@ -98,6 +109,13 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set())
   const [deleting, setDeleting] = React.useState(false)
 
+  // 删除确认弹窗
+  const [deleteConfirm, setDeleteConfirm] = React.useState<{
+    type: 'single' | 'batch'
+    ids: number[]
+    itemName?: string
+  } | null>(null)
+
   const fetchData = React.useCallback(async () => {
     setLoading(true)
     try {
@@ -153,7 +171,7 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
     })
   }
 
-  const handleDeleteSingle = async (id: number) => {
+  const doDeleteSingle = async (id: number) => {
     setDeleting(true)
     try {
       await apiClient.delete(`/materialLibrary/${id}`)
@@ -171,13 +189,16 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
     }
   }
 
-  const handleBatchDelete = async () => {
-    if (selectedIds.size === 0) return
+  const handleDeleteSingle = (id: number, name: string) => {
+    setDeleteConfirm({ type: 'single', ids: [id], itemName: name })
+  }
+
+  const doBatchDelete = async (ids: number[]) => {
     setDeleting(true)
     try {
       const result = await apiClient.post<
         ApiResponse<{ success_ids: number[]; failed_items: { id: number; reason: string }[] }>
-      >("/materialLibrary/batch-delete", { ids: Array.from(selectedIds) })
+      >("/materialLibrary/batch-delete", { ids })
 
       const resp = result.response
       const successCount = resp.success_ids.length
@@ -196,6 +217,21 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
       onNotification(error.message || "批量删除失败", "error")
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return
+    setDeleteConfirm({ type: 'batch', ids: Array.from(selectedIds) })
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!deleteConfirm) return
+    setDeleteConfirm(null)
+    if (deleteConfirm.type === 'single') {
+      doDeleteSingle(deleteConfirm.ids[0])
+    } else {
+      doBatchDelete(deleteConfirm.ids)
     }
   }
 
@@ -330,7 +366,7 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteSingle(item.id)}
+                      onClick={() => handleDeleteSingle(item.id, item.name)}
                       disabled={deleting}
                     >
                       <Trash2 className="mr-1 size-3" />
@@ -408,6 +444,34 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
           </div>
         </div>
       </div>
+
+      {/* 删除确认弹窗 */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-destructive" />
+              确认删除
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirm?.type === 'single'
+                ? `确定要删除素材「${deleteConfirm.itemName}」吗？此操作不可撤销。`
+                : `确定要删除选中的 ${deleteConfirm?.ids.length} 条素材吗？此操作不可撤销。`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="mr-2 size-4 animate-spin" />}
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
   }

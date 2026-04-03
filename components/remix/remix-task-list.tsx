@@ -35,7 +35,18 @@ import {
   Trash2,
   ChevronDown,
   Download,
+  AlertTriangle,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type {
   RemixTask,
   RemixTaskStatus,
@@ -111,6 +122,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
 
     const [expandedIds, setExpandedIds] = React.useState<Set<number>>(new Set())
     const [deleting, setDeleting] = React.useState(false)
+    const [deleteTaskId, setDeleteTaskId] = React.useState<number | null>(null)
 
     const fetchData = React.useCallback(async () => {
       setLoading(true)
@@ -156,7 +168,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
       })
     }
 
-    const handleDelete = async (id: number) => {
+    const doDelete = async (id: number) => {
       setDeleting(true)
       try {
         await apiClient.delete(`/materialRemixTask/${id}`)
@@ -167,6 +179,10 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
       } finally {
         setDeleting(false)
       }
+    }
+
+    const handleDelete = (id: number) => {
+      setDeleteTaskId(id)
     }
 
     const totalPages = pageCount || 1
@@ -425,6 +441,32 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             </div>
           </div>
         </div>
+
+        {/* 删除确认弹窗 */}
+        <AlertDialog open={deleteTaskId !== null} onOpenChange={(open) => { if (!open) setDeleteTaskId(null) }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="size-5 text-destructive" />
+                确认删除
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除任务 #{deleteTaskId} 吗？此操作不可撤销。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => { if (deleteTaskId !== null) { const id = deleteTaskId; setDeleteTaskId(null); doDelete(id) } }}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting && <Loader2 className="mr-2 size-4 animate-spin" />}
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     )
   }
