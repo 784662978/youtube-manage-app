@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useImperativeHandle } from "react"
 import { apiClient } from "@/lib/api-client"
 import { NotificationType } from "@/components/ui/notification"
 import { Button } from "@/components/ui/button"
@@ -38,7 +39,6 @@ interface MaterialLibraryListProps {
   channels: { id: number; name: string; label: string }[]
   languages: { id: number; name: string; label: string }[]
   onNotification: (message: string, type: NotificationType) => void
-  onRefresh: () => void
 }
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100]
@@ -70,7 +70,12 @@ function formatDuration(seconds: number): string {
   return min > 0 ? `${min}分${sec}秒` : `${sec}秒`
 }
 
-export function MaterialLibraryList({ channels, languages, onNotification, onRefresh }: MaterialLibraryListProps) {
+export interface MaterialLibraryListRef {
+  refresh: () => void
+}
+
+export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, MaterialLibraryListProps>(
+  function MaterialLibraryListInner({ channels, languages, onNotification }, _ref) {
   const [data, setData] = React.useState<MaterialItem[]>([])
   const [loading, setLoading] = React.useState(false)
   const [page, setPage] = React.useState(1)
@@ -116,6 +121,8 @@ export function MaterialLibraryList({ channels, languages, onNotification, onRef
       setLoading(false)
     }
   }, [page, pageSize, searchParams, onNotification])
+
+  useImperativeHandle(_ref, () => ({ refresh: fetchData }), [fetchData])
 
   React.useEffect(() => { fetchData() }, [fetchData])
 
@@ -403,4 +410,5 @@ export function MaterialLibraryList({ channels, languages, onNotification, onRef
       </div>
     </div>
   )
-}
+  }
+)

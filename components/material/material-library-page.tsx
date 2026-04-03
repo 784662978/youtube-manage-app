@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api-client"
 import { Notification, NotificationType } from "@/components/ui/notification"
 import { Button } from "@/components/ui/button"
 import { Loader2, Upload } from "lucide-react"
-import { MaterialLibraryList } from "./material-library-list"
+import { MaterialLibraryList, MaterialLibraryListRef } from "./material-library-list"
 import { UploadDialog } from "./upload-dialog"
 import type { MaterialChannel, MaterialLanguage } from "@/lib/types/material"
 import type { ApiResponse } from "@/lib/types/drama"
@@ -15,6 +15,7 @@ export function MaterialLibraryPage() {
   const [languages, setLanguages] = React.useState<{ id: number; name: string; label: string }[]>([])
   const [channelsLoading, setChannelsLoading] = React.useState(true)
   const [uploadOpen, setUploadOpen] = React.useState(false)
+  const listRef = React.useRef<MaterialLibraryListRef>(null)
   const [notification, setNotification] = React.useState<{
     message: string
     type: NotificationType
@@ -70,10 +71,10 @@ export function MaterialLibraryPage() {
       </div>
 
       <MaterialLibraryList
+        ref={listRef}
         channels={channels}
         languages={languages}
         onNotification={showNotification}
-        onRefresh={fetchChannels}
       />
 
       <UploadDialog
@@ -82,7 +83,7 @@ export function MaterialLibraryPage() {
         channels={channels}
         languages={languages}
         onNotification={showNotification}
-        onSuccess={fetchChannels}
+        onSuccess={() => listRef.current?.refresh()}
       />
     </div>
   )
