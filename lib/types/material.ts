@@ -74,16 +74,38 @@ export interface UpdateChannelParams {
   is_enabled: number
 }
 
+// ==================== 素材语言管理 ====================
+
+export interface MaterialLanguage {
+  id: number
+  language_code: string
+  language_name: string
+  sort_order: number
+  is_enabled: number
+}
+
+export interface CreateMaterialLanguageParams {
+  language_code: string
+  language_name: string
+  sort_order: number
+  is_enabled: number
+}
+
+export interface UpdateMaterialLanguageParams {
+  language_name: string
+  sort_order: number
+  is_enabled: number
+}
+
 // ==================== STS 凭证 ====================
 
 export interface StsCredentials {
-  AccessKeyId: string
-  AccessKeySecret: string
-  SecurityToken: string
-  Expiration: string
-  region: string
-  bucket: string
+  access_key_id: string
+  access_key_secret: string
+  security_token: string
+  bucket_name: string
   endpoint: string
+  upload_path: string
 }
 
 // ==================== 混剪任务 ====================

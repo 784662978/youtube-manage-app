@@ -34,36 +34,20 @@ interface UploadDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   channels: { id: number; name: string; label: string }[]
+  languages: { id: number; name: string; label: string }[]
   onNotification: (message: string, type: NotificationType) => void
   onSuccess: () => void
 }
 
 const ACCEPTED_VIDEO_TYPES = ".mp4,.mov,.avi,.mkv,.webm"
 
-export function UploadDialog({ open, onOpenChange, channels, onNotification, onSuccess }: UploadDialogProps) {
+export function UploadDialog({ open, onOpenChange, channels, languages, onNotification, onSuccess }: UploadDialogProps) {
   const [channel, setChannel] = React.useState("")
   const [language, setLanguage] = React.useState("")
-  const [languages, setLanguages] = React.useState<{ id?: number; code?: string | number; display_name?: string; zh_name?: string }[]>([])
   const [files, setFiles] = React.useState<PendingFile[]>([])
   const [uploading, setUploading] = React.useState(false)
   const [showOverride, setShowOverride] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-
-  React.useEffect(() => {
-    const fetchLanguages = async () => {
-      if (!channel) {
-        setLanguages([])
-        return
-      }
-      try {
-        const result = await apiClient.get<ApiResponse<{ id?: number; code?: string | number; display_name?: string; zh_name?: string }[]>>(`/taskLanguages/${channel}`)
-        setLanguages(result.response || [])
-      } catch {
-        setLanguages([])
-      }
-    }
-    fetchLanguages()
-  }, [channel])
 
   // 弹窗打开时彻底重置状态
   React.useEffect(() => {
@@ -71,7 +55,6 @@ export function UploadDialog({ open, onOpenChange, channels, onNotification, onS
       setFiles([])
       setChannel("")
       setLanguage("")
-      setLanguages([])
       setShowOverride(false)
     }
   }, [open])
@@ -248,7 +231,7 @@ export function UploadDialog({ open, onOpenChange, channels, onNotification, onS
                 <Label>
                   渠道 <span className="text-red-500">*</span>
                 </Label>
-                <Select value={channel} onValueChange={(v) => { setChannel(v); setLanguage("") }} disabled={uploading}>
+                <Select value={channel} onValueChange={setChannel} disabled={uploading}>
                   <SelectTrigger>
                     <SelectValue placeholder="选择渠道" />
                   </SelectTrigger>
@@ -265,18 +248,16 @@ export function UploadDialog({ open, onOpenChange, channels, onNotification, onS
                 <Label>
                   语言 <span className="text-red-500">*</span>
                 </Label>
-                <Select value={language} onValueChange={setLanguage} disabled={uploading || !channel}>
+                <Select value={language} onValueChange={setLanguage} disabled={uploading}>
                   <SelectTrigger>
-                    <SelectValue placeholder={channel ? "选择语言" : "请先选择渠道"} />
+                    <SelectValue placeholder="选择语言" />
                   </SelectTrigger>
                   <SelectContent>
-                    {languages.map((lang, idx) => {
-                      const value = lang.code != null ? String(lang.code) : String(lang.id)
-                      const label = lang.zh_name || lang.display_name || value
-                      return (
-                        <SelectItem key={value || idx} value={value}>{label}</SelectItem>
-                      )
-                    })}
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.id} value={lang.name}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

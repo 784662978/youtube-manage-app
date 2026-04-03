@@ -33,6 +33,7 @@ interface CreateTaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   channels: { id: number; name: string; label: string }[]
+  languages: { id: number; name: string; label: string }[]
   onNotification: (message: string, type: NotificationType) => void
   onSuccess: () => void
 }
@@ -62,30 +63,14 @@ const emptyRow = (): TaskRow => ({
   target_max_minutes: "",
 })
 
-export function CreateTaskDialog({ open, onOpenChange, channels, onNotification, onSuccess }: CreateTaskDialogProps) {
+export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNotification, onSuccess }: CreateTaskDialogProps) {
   const [channel, setChannel] = React.useState("")
   const [language, setLanguage] = React.useState("")
-  const [languages, setLanguages] = React.useState<{ id?: number; code?: string | number; display_name?: string; zh_name?: string }[]>([])
   const [materials, setMaterials] = React.useState<MaterialItem[]>([])
   const [rows, setRows] = React.useState<TaskRow[]>([emptyRow()])
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [saving, setSaving] = React.useState(false)
   const [materialsLoading, setMaterialsLoading] = React.useState(false)
-
-  React.useEffect(() => {
-    const fetchLanguages = async () => {
-      if (!channel) { setLanguages([]); return }
-      try {
-        const result = await apiClient.get<ApiResponse<{ id?: number; code?: string | number; display_name?: string; zh_name?: string }[]>>(
-          `/taskLanguages/${channel}`
-        )
-        setLanguages(result.response || [])
-      } catch {
-        setLanguages([])
-      }
-    }
-    fetchLanguages()
-  }, [channel])
 
   // 弹窗打开时彻底重置状态
   React.useEffect(() => {
@@ -94,7 +79,6 @@ export function CreateTaskDialog({ open, onOpenChange, channels, onNotification,
       setChannel("")
       setLanguage("")
       setMaterials([])
-      setLanguages([])
       setErrors({})
     }
   }, [open])
@@ -216,7 +200,7 @@ export function CreateTaskDialog({ open, onOpenChange, channels, onNotification,
                 <Label>
                   渠道 <span className="text-red-500">*</span>
                 </Label>
-                <Select value={channel} onValueChange={(v) => { setChannel(v); setLanguage("") }} disabled={saving}>
+                <Select value={channel} onValueChange={setChannel} disabled={saving}>
                   <SelectTrigger><SelectValue placeholder="选择渠道" /></SelectTrigger>
                   <SelectContent>
                     {channels.map((ch) => (
@@ -229,16 +213,14 @@ export function CreateTaskDialog({ open, onOpenChange, channels, onNotification,
                 <Label>
                   语言 <span className="text-red-500">*</span>
                 </Label>
-                <Select value={language} onValueChange={setLanguage} disabled={saving || !channel}>
-                  <SelectTrigger><SelectValue placeholder={channel ? "选择语言" : "请先选择渠道"} /></SelectTrigger>
+                <Select value={language} onValueChange={setLanguage} disabled={saving}>
+                  <SelectTrigger><SelectValue placeholder="选择语言" /></SelectTrigger>
                   <SelectContent>
-                    {languages.map((lang, idx) => {
-                      const value = lang.code != null ? String(lang.code) : String(lang.id)
-                      const label = lang.zh_name || lang.display_name || value
-                      return (
-                        <SelectItem key={value || idx} value={value}>{label}</SelectItem>
-                      )
-                    })}
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.id} value={lang.name}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

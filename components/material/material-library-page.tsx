@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Upload } from "lucide-react"
 import { MaterialLibraryList } from "./material-library-list"
 import { UploadDialog } from "./upload-dialog"
-import type { MaterialChannel } from "@/lib/types/material"
+import type { MaterialChannel, MaterialLanguage } from "@/lib/types/material"
 import type { ApiResponse } from "@/lib/types/drama"
 
 export function MaterialLibraryPage() {
   const [channels, setChannels] = React.useState<{ id: number; name: string; label: string }[]>([])
+  const [languages, setLanguages] = React.useState<{ id: number; name: string; label: string }[]>([])
   const [channelsLoading, setChannelsLoading] = React.useState(true)
   const [uploadOpen, setUploadOpen] = React.useState(false)
   const [notification, setNotification] = React.useState<{
@@ -26,12 +27,14 @@ export function MaterialLibraryPage() {
 
   const fetchChannels = React.useCallback(async () => {
     try {
-      const result = await apiClient.get<ApiResponse<MaterialChannel[]>>(
-        "/materialChannel/list"
-      )
-      setChannels((result.response || []).map((ch) => ({ id: ch.id, name: ch.channel_code, label: ch.channel_name })))
+      const [channelResult, languageResult] = await Promise.all([
+        apiClient.get<ApiResponse<MaterialChannel[]>>("/materialChannel/list"),
+        apiClient.get<ApiResponse<MaterialLanguage[]>>("/materialLanguage/list"),
+      ])
+      setChannels((channelResult.response || []).map((ch) => ({ id: ch.id, name: ch.channel_code, label: ch.channel_name })))
+      setLanguages((languageResult.response || []).map((lang) => ({ id: lang.id, name: lang.language_code, label: lang.language_name })))
     } catch (error) {
-      console.error("Failed to fetch channels:", error)
+      console.error("Failed to fetch channels/languages:", error)
     } finally {
       setChannelsLoading(false)
     }
@@ -68,6 +71,7 @@ export function MaterialLibraryPage() {
 
       <MaterialLibraryList
         channels={channels}
+        languages={languages}
         onNotification={showNotification}
         onRefresh={fetchChannels}
       />
@@ -76,6 +80,7 @@ export function MaterialLibraryPage() {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         channels={channels}
+        languages={languages}
         onNotification={showNotification}
         onSuccess={fetchChannels}
       />

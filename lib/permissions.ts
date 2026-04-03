@@ -60,6 +60,8 @@ export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   '/material/library': ['admin'],
   '/material/channel/': ['admin'],
   '/material/channel': ['admin'],
+  '/material/language/': ['admin'],
+  '/material/language': ['admin'],
   '/remix/task/': ['admin'],
   '/remix/task': ['admin'],
 }

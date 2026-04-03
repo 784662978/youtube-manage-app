@@ -36,6 +36,7 @@ import type { ApiResponse, PageResponse } from "@/lib/types/drama"
 
 interface MaterialLibraryListProps {
   channels: { id: number; name: string; label: string }[]
+  languages: { id: number; name: string; label: string }[]
   onNotification: (message: string, type: NotificationType) => void
   onRefresh: () => void
 }
@@ -69,7 +70,7 @@ function formatDuration(seconds: number): string {
   return min > 0 ? `${min}分${sec}秒` : `${sec}秒`
 }
 
-export function MaterialLibraryList({ channels, onNotification, onRefresh }: MaterialLibraryListProps) {
+export function MaterialLibraryList({ channels, languages, onNotification, onRefresh }: MaterialLibraryListProps) {
   const [data, setData] = React.useState<MaterialItem[]>([])
   const [loading, setLoading] = React.useState(false)
   const [page, setPage] = React.useState(1)
@@ -91,9 +92,6 @@ export function MaterialLibraryList({ channels, onNotification, onRefresh }: Mat
   // 批量选择
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set())
   const [deleting, setDeleting] = React.useState(false)
-
-  // 当前选中的渠道对应的语言选项
-  const [languages, setLanguages] = React.useState<{ id?: number; code?: string | number; display_name?: string; zh_name?: string }[]>([])
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -120,25 +118,6 @@ export function MaterialLibraryList({ channels, onNotification, onRefresh }: Mat
   }, [page, pageSize, searchParams, onNotification])
 
   React.useEffect(() => { fetchData() }, [fetchData])
-
-  // 当渠道变化时加载语言列表
-  React.useEffect(() => {
-    const fetchLanguages = async () => {
-      if (!channel) {
-        setLanguages([])
-        return
-      }
-      try {
-        const result = await apiClient.get<ApiResponse<{ code: string; display_name: string }[]>>(
-          `/taskLanguages/${channel}`
-        )
-        setLanguages(result.response || [])
-      } catch {
-        setLanguages([])
-      }
-    }
-    fetchLanguages()
-  }, [channel])
 
   const handleSearch = () => {
     setSearchParams({ channel, language, name })
@@ -224,7 +203,6 @@ export function MaterialLibraryList({ channels, onNotification, onRefresh }: Mat
           <span className="text-sm text-muted-foreground whitespace-nowrap">渠道</span>
           <Select value={channel || "__all__"} onValueChange={(v) => {
             setChannel(v === "__all__" ? "" : v)
-            setLanguage("")
           }}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="全部渠道" />
@@ -248,13 +226,11 @@ export function MaterialLibraryList({ channels, onNotification, onRefresh }: Mat
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">全部语言</SelectItem>
-              {languages.map((lang, idx) => {
-                const value = lang.code != null ? String(lang.code) : String(lang.id)
-                const label = lang.zh_name || lang.display_name || value
-                return (
-                  <SelectItem key={value || idx} value={value}>{label}</SelectItem>
-                )
-              })}
+              {languages.map((lang) => (
+                <SelectItem key={lang.id} value={lang.name}>
+                  {lang.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

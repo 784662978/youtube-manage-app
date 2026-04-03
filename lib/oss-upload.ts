@@ -4,11 +4,11 @@ import { apiClient } from './api-client'
 let stsCache: StsCredentials | null = null
 let stsExpireTime = 0
 
-const STS_REFRESH_BUFFER = 5 * 60 * 1000 // 提前5分钟刷新
+const STS_CACHE_DURATION = 30 * 60 * 1000 // 缓存30分钟（接口无 Expiration 字段）
 
 export async function getStsCredentials(): Promise<StsCredentials> {
   const now = Date.now()
-  if (stsCache && stsExpireTime - now > STS_REFRESH_BUFFER) {
+  if (stsCache && stsExpireTime - now > 5 * 60 * 1000) {
     return stsCache
   }
 
@@ -17,8 +17,7 @@ export async function getStsCredentials(): Promise<StsCredentials> {
   )
 
   stsCache = result.response
-  const expiration = new Date(result.response.Expiration).getTime()
-  stsExpireTime = expiration
+  stsExpireTime = Date.now() + STS_CACHE_DURATION
 
   return stsCache
 }
@@ -50,11 +49,11 @@ async function createHmacSha1(key: string, data: string): Promise<string> {
  */
 export async function uploadFileToOss(file: File, ossPath: string): Promise<void> {
   const credentials = await getStsCredentials()
-  const { bucket, endpoint, AccessKeyId, AccessKeySecret, SecurityToken } = credentials
+  const { bucket_name, endpoint, access_key_id, access_key_secret, security_token } = credentials
 
-  const url = `https://${bucket}.${endpoint}/${ossPath}`
+  const url = `https://${bucket_name}.${endpoint}/${ossPath}`
 
-  const canonicalizedHeaders = `x-oss-object-acl:public-read\nx-oss-security-token:${SecurityToken}\n`
+  const canonicalizedHeaders = `x-oss-object-acl:public-read\nx-oss-security-token:${security_token}\n`
   const stringToSign = [
     'PUT',
     '', // Content-MD5
@@ -63,15 +62,15 @@ export async function uploadFileToOss(file: File, ossPath: string): Promise<void
     canonicalizedHeaders + ossPath,
   ].join('\n')
 
-  const signature = await createHmacSha1(AccessKeySecret, stringToSign)
+  const signature = await createHmacSha1(access_key_secret, stringToSign)
 
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
       'Content-Type': file.type || 'application/octet-stream',
       'x-oss-object-acl': 'public-read',
-      'x-oss-security-token': SecurityToken,
-      Authorization: `OSS ${AccessKeyId}:${signature}`,
+      'x-oss-security-token': security_token,
+      Authorization: `OSS ${access_key_id}:${signature}`,
     },
     body: file,
   })
