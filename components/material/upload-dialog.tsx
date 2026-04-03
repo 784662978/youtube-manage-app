@@ -29,6 +29,7 @@ import type {
   PendingFile,
 } from "@/lib/types/material"
 import type { ApiResponse } from "@/lib/types/drama"
+import { getStsCredentials } from "@/lib/oss-upload"
 
 interface UploadDialogProps {
   open: boolean
@@ -154,8 +155,10 @@ export function UploadDialog({ open, onOpenChange, channels, languages, onNotifi
       )
 
       try {
+        const credentials = await getStsCredentials()
         // 构建 OSS 路径：material/{channel}/{language}/{filename}
-        const ossPath = buildOssPath(f.channel, f.language, f.name)
+        const fullObjectName = buildOssPath(f.channel, f.language, f.name)
+        const ossPath = `${credentials.upload_path}/${fullObjectName}`
 
         // 上传到 OSS
         await uploadFileToOss(f.file, ossPath)

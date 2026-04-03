@@ -179,8 +179,6 @@ export async function uploadFileToOss(
   ossPath: string,
   options?: OssUploadOptions
 ): Promise<void> {
-  const credentials = await getStsCredentials()
-  const fullObjectName = `${credentials.upload_path}/${ossPath}`
   const client = await createOssClient()
 
   const uploadOptions: OSS.MultipartUploadOptions = {
@@ -206,7 +204,7 @@ export async function uploadFileToOss(
   }
 
   try {
-    await client.multipartUpload(fullObjectName, file, uploadOptions)
+    await client.multipartUpload(ossPath, file, uploadOptions)
   } catch (error) {
     handleOssError(error, 'OSS 上传失败')
   }
