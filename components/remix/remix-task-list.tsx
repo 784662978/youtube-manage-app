@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client"
 import { NotificationType } from "@/components/ui/notification"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import * as XLSX from "xlsx"
 import {
   Table,
   TableBody,
@@ -14,6 +15,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -36,6 +48,8 @@ import {
   ChevronDown,
   Download,
   AlertTriangle,
+  FileSpreadsheet,
+  Play,
 } from "lucide-react"
 import {
   AlertDialog,
@@ -67,6 +81,31 @@ export interface RemixTaskListRef {
 }
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100]
+
+/** 导出 Excel 列定义及字段映射 */
+const EXPORT_COLUMNS = [
+  { key: 'drama_key', label: 'drama_key' },
+  { key: 'content_code', label: 'content_code' },
+  { key: 'external_code', label: 'external_code' },
+  { key: 'drama_name', label: 'drama_name', source: 'head_material_name_without_suffix' },
+  { key: 'cover_url', label: 'cover_url' },
+  { key: 'source_lang', label: 'source_lang', source: 'language' },
+  { key: 'copyright', label: 'channel' },
+  { key: 'copyright_expire', label: 'copyright_expire' },
+  { key: 'level', label: 'level' },
+  { key: 'total_episodes', label: 'total_episodes' },
+  { key: 'tags', label: 'tags' },
+  { key: 'summary', label: 'summary' },
+  { key: 'highlights', label: 'highlights' },
+  { key: 'created_at', label: 'created_at' },
+  { key: 'target_lang', label: 'target_lang', source: 'target_lang' },
+  { key: 'merged_url', label: 'merged_url', source: 'result_oss' },
+  { key: 'skip_transfer', label: 'skip_transfer' },
+  { key: 'merged_subtitle_ref', label: 'merged_subtitle_ref' },
+  { key: 'merged_subtitle_format', label: 'merged_subtitle_format' },
+  { key: 'version_label', label: 'version_label', composite: ['channel', 'language'] as const },
+  { key: 'delivery_mode', label: 'delivery_mode' },
+] as const
 
 const TASK_STATUS_BADGE: Record<RemixTaskStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "待处理", variant: "outline" },
@@ -185,6 +224,77 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
       setDeleteTaskId(id)
     }
 
+    const [exporting, setExporting] = React.useState(false)
+
+    const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+
+    /** URL 显示最大字符数 */
+    const URL_MAX_LENGTH = 40
+
+    const handleExportExcel = async () => {
+      setExporting(true)
+      try {
+        // 分页拉取所有已完成任务
+        const allTasks: RemixTask[] = []
+        let currentPage = 1
+        let hasMore = true
+        while (hasMore) {
+          const result = await apiClient.get<ApiResponse<PageResponse<RemixTask>>>(
+            "/materialRemixTask/list",
+            { page: currentPage, page_size: 100, status: "completed" } as unknown as Record<string, string>
+          )
+          const resp = result.response
+          allTasks.push(...(resp.data || []))
+          hasMore = currentPage < resp.pageCount
+          currentPage++
+        }
+
+        if (allTasks.length === 0) {
+          onNotification("没有已完成的任务可导出", "error")
+          return
+        }
+
+        // 构建导出数据
+        const rows = allTasks.map((task) => {
+          const row: Record<string, unknown> = {}
+          for (const col of EXPORT_COLUMNS) {
+            if ('composite' in col && col.composite) {
+              const taskRecord = task as unknown as Record<string, unknown>
+              const parts = col.composite.map((k) => taskRecord[k] ?? '')
+              row[col.key] = parts.filter(Boolean).join('_')
+            } else if ('source' in col && col.source) {
+              const value = (task as unknown as Record<string, unknown>)[col.source!]
+              row[col.key] = value ?? ''
+            } else {
+              row[col.key] = ''
+            }
+          }
+          return row
+        })
+
+        // 生成 Excel
+        const ws = XLSX.utils.json_to_sheet(rows, { header: EXPORT_COLUMNS.map((c) => c.key) })
+
+        // 设置列宽
+        ws['!cols'] = EXPORT_COLUMNS.map((c) => ({
+          wch: Math.max(c.key.length + 2, 14),
+        }))
+
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, '已完成任务')
+
+        const now = new Date()
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+        XLSX.writeFile(wb, `混剪任务_已完成_${dateStr}.xlsx`)
+
+        onNotification(`成功导出 ${allTasks.length} 条已完成任务`, "success")
+      } catch (error: any) {
+        onNotification(error.message || "导出失败", "error")
+      } finally {
+        setExporting(false)
+      }
+    }
+
     const totalPages = pageCount || 1
     const pageNumbers = generatePageNumbers(page, totalPages)
 
@@ -249,6 +359,11 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             <Plus className="mr-2 size-4" />
             创建任务
           </Button>
+
+          <Button size="sm" variant="outline" onClick={handleExportExcel} disabled={exporting}>
+            {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileSpreadsheet className="mr-2 size-4" />}
+            导出 Excel
+          </Button>
         </div>
 
         {/* 列表 */}
@@ -261,8 +376,9 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                 <TableHead className="whitespace-nowrap">首视频</TableHead>
                 <TableHead className="whitespace-nowrap">渠道</TableHead>
                 <TableHead className="whitespace-nowrap">语言</TableHead>
-                <TableHead className="whitespace-nowrap">状态</TableHead>
                 <TableHead className="whitespace-nowrap">目标时长</TableHead>
+                <TableHead className="whitespace-nowrap">视频链接</TableHead>
+                <TableHead className="whitespace-nowrap">状态</TableHead>
                 <TableHead className="whitespace-nowrap">操作</TableHead>
               </TableRow>
             </TableHeader>
@@ -301,12 +417,37 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{task.channel}</TableCell>
                         <TableCell className="whitespace-nowrap">{task.language}</TableCell>
-                        <TableCell>
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
-                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {task.target_min_minutes}-{task.target_max_minutes}分钟
                         </TableCell>
+                        <TableCell className="max-w-50" onClick={(e) => e.stopPropagation()}>
+                          {task.result_oss ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className="flex items-center gap-1.5 text-xs text-primary hover:underline cursor-pointer w-full text-left"
+                                  onClick={() => setPreviewUrl(task.result_oss)}
+                                >
+                                  <Play className="size-3 shrink-0" />
+                                  <span className="truncate">
+                                    {task.result_oss.length > URL_MAX_LENGTH
+                                      ? task.result_oss.slice(0, URL_MAX_LENGTH) + '...'
+                                      : task.result_oss}
+                                  </span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-md break-all">
+                                {task.result_oss}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </TableCell>
+                        
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             {task.status === "completed" && task.result_oss && (
@@ -467,6 +608,29 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* 视频预览弹窗 */}
+        <Dialog open={!!previewUrl} onOpenChange={(open) => { if (!open) setPreviewUrl(null) }}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Play className="size-5" />
+                视频预览
+              </DialogTitle>
+            </DialogHeader>
+            {previewUrl && (
+              <div className="aspect-video w-full rounded-md overflow-hidden bg-black">
+                <video
+                  key={previewUrl}
+                  src={previewUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full"
+                />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
