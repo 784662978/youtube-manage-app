@@ -7,10 +7,14 @@ import { Loader2 } from "lucide-react"
 import { RemixTaskList, RemixTaskListRef } from "./remix-task-list"
 import { CreateTaskDialog } from "./create-task-dialog"
 import { EditTaskDialog } from "./edit-task-dialog"
+import { DownloadManagerPanel } from "@/components/download/download-manager-panel"
+import { DownloadToolbarButton } from "@/components/download/download-toolbar-button"
+import { DownloadManagerBridge, useDownloadManagerContext } from "@/components/download/download-context"
+import { useDownloadManager } from "@/hooks/use-download-manager"
 import type { MaterialChannel, MaterialLanguage, RemixTask } from "@/lib/types/material"
 import type { ApiResponse } from "@/lib/types/drama"
 
-export function RemixTaskPage() {
+function RemixTaskPageInner() {
   const [channels, setChannels] = React.useState<{ id: number; name: string; label: string }[]>([])
   const [languages, setLanguages] = React.useState<{ id: number; name: string; label: string }[]>([])
   const [channelsLoading, setChannelsLoading] = React.useState(true)
@@ -24,6 +28,9 @@ export function RemixTaskPage() {
     type: NotificationType
     visible: boolean
   }>({ message: "", type: "success", visible: false })
+
+  // 从 Context 获取下载管理状态（由 Bridge 注入）
+  const ctx = useDownloadManagerContext()
 
   const showNotification = React.useCallback((message: string, type: NotificationType) => {
     setNotification({ message, type, visible: true })
@@ -63,16 +70,23 @@ export function RemixTaskPage() {
         onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
       />
 
-      <h1 className="text-2xl font-bold tracking-tight">混剪任务</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">混剪任务</h1>
+        <DownloadToolbarButton />
+      </div>
 
-      <RemixTaskList
-        ref={taskListRef}
-        channels={channels}
-        languages={languages}
-        onNotification={showNotification}
-        onCreateTask={() => setCreateOpen(true)}
-        onEditTask={(task) => setEditTask(task)}
-      />
+      {ctx && (
+        <RemixTaskList
+          ref={taskListRef}
+          channels={channels}
+          languages={languages}
+          onNotification={showNotification}
+          onCreateTask={() => setCreateOpen(true)}
+          onEditTask={(task) => setEditTask(task)}
+          downloadManager={ctx}
+          onOpenDownloadPanel={() => ctx.setPanelOpen(true)}
+        />
+      )}
 
       <CreateTaskDialog
         open={createOpen}
@@ -92,6 +106,31 @@ export function RemixTaskPage() {
           onSuccess={() => taskListRef.current?.refresh()}
         />
       )}
+
+      {/* 下载管理面板 */}
+      {ctx && (
+        <DownloadManagerPanel
+          open={ctx.panelOpen}
+          onOpenChange={ctx.setPanelOpen}
+          tasks={ctx.tasks}
+          activeCount={ctx.activeCount}
+          completedCount={ctx.completedCount}
+          onCancel={ctx.cancel}
+          onRemove={ctx.remove}
+          onRetry={ctx.retry}
+          onSave={ctx.saveFile}
+          onClearCompleted={ctx.clearCompleted}
+        />
+      )}
     </div>
+  )
+}
+
+export function RemixTaskPage() {
+  const downloadManager = useDownloadManager()
+  return (
+    <DownloadManagerBridge manager={downloadManager}>
+      <RemixTaskPageInner />
+    </DownloadManagerBridge>
   )
 }

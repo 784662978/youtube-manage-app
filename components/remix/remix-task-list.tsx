@@ -50,6 +50,8 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Play,
+  CheckCircle2,
+  RotateCcw,
 } from "lucide-react"
 import {
   AlertDialog,
@@ -67,6 +69,7 @@ import type {
   RemixTaskListParams,
 } from "@/lib/types/material"
 import type { ApiResponse, PageResponse } from "@/lib/types/drama"
+import type { UseDownloadManagerReturn } from "@/hooks/use-download-manager"
 
 interface RemixTaskListProps {
   channels: { id: number; name: string; label: string }[]
@@ -74,6 +77,8 @@ interface RemixTaskListProps {
   onNotification: (message: string, type: NotificationType) => void
   onCreateTask: () => void
   onEditTask: (task: RemixTask) => void
+  downloadManager: UseDownloadManagerReturn
+  onOpenDownloadPanel: () => void
 }
 
 export interface RemixTaskListRef {
@@ -141,7 +146,7 @@ function generatePageNumbers(current: number, total: number): (number | "ellipsi
 }
 
 export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListProps>(
-  function RemixTaskListInner({ channels, languages, onNotification, onCreateTask, onEditTask }, ref) {
+  function RemixTaskListInner({ channels, languages, onNotification, onCreateTask, onEditTask, downloadManager, onOpenDownloadPanel }, ref) {
     const [data, setData] = React.useState<RemixTask[]>([])
     const [loading, setLoading] = React.useState(false)
     const [page, setPage] = React.useState(1)
@@ -450,32 +455,79 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                         
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            {task.status === "completed" && task.result_oss && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => {
-                                  if (!task.result_oss) return
-                                  const fileName = task.result_oss.split("/").pop() || `task-${task.id}.mp4`
-                                  fetch(task.result_oss)
-                                    .then((res) => res.blob())
-                                    .then((blob) => {
-                                      const url = URL.createObjectURL(blob)
-                                      const a = document.createElement("a")
-                                      a.href = url
-                                      a.download = fileName
-                                      document.body.appendChild(a)
-                                      a.click()
-                                      document.body.removeChild(a)
-                                      URL.revokeObjectURL(url)
-                                    })
-                                }}
-                              >
-                                <Download className="mr-1 size-3" />
-                                下载
-                              </Button>
-                            )}
+                            {task.status === "completed" && task.result_oss && (() => {
+                              const dlTask = downloadManager.getTaskByTaskId(task.id)
+                              const fileName = task.result_oss.split("/").pop() || `task-${task.id}.mp4`
+
+                              // 已完成：显示重新保存
+                              if (dlTask && dlTask.status === "completed") {
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs text-green-600 dark:text-green-400"
+                                    onClick={() => downloadManager.saveFile(dlTask.id)}
+                                  >
+                                    <CheckCircle2 className="mr-1 size-3" />
+                                    完成
+                                  </Button>
+                                )
+                              }
+
+                              // 下载中/排队中：显示进度，点击打开面板
+                              if (dlTask && (dlTask.status === "downloading" || dlTask.status === "pending")) {
+                                const percent = dlTask.total > 0
+                                  ? Math.round((dlTask.loaded / dlTask.total) * 100)
+                                  : 0
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs text-primary"
+                                    onClick={onOpenDownloadPanel}
+                                  >
+                                    {dlTask.status === "downloading"
+                                      ? <>
+                                          <Loader2 className="mr-1 size-3 animate-spin" />
+                                          {percent}%
+                                        </>
+                                      : <>
+                                          <Loader2 className="mr-1 size-3 animate-spin" />
+                                          排队
+                                        </>
+                                    }
+                                  </Button>
+                                )
+                              }
+
+                              // 失败：显示重试
+                              if (dlTask && dlTask.status === "failed") {
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs text-destructive"
+                                    onClick={() => downloadManager.retry(dlTask.id)}
+                                  >
+                                    <RotateCcw className="mr-1 size-3" />
+                                    重试
+                                  </Button>
+                                )
+                              }
+
+                              // 未下载：显示下载按钮
+                              return (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => downloadManager.addDownload(task.result_oss!, fileName, task.id)}
+                                >
+                                  <Download className="mr-1 size-3" />
+                                  下载
+                                </Button>
+                              )
+                            })()}
                             {task.status === "pending" && (
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onEditTask(task)}>
                                 <Pencil className="mr-1 size-3" />
