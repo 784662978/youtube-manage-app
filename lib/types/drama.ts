@@ -100,3 +100,25 @@ export interface DramaboxVideoParams {
   page?: number
   page_size?: number
 }
+
+// ==================== FlickReels ====================
+
+export interface FlickreelsVideo {
+  id: number
+  drama_name: string
+  language: string
+  copyright_info: string
+  distribution_date: string
+  pull_sequence: number
+}
+
+export interface FlickreelsVideoParams {
+  page?: number
+  page_size?: number
+}
+
+export interface FlickreelsSyncResult {
+  inserted_count: number
+  skipped_count: number
+  feishu_total_count: number
+}
