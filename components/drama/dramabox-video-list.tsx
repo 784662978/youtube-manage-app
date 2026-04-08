@@ -267,13 +267,13 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
                 { header: "海外剧名", key: "drama_oversea_name" },
                 { header: "类型", key: "exclusive_type" },
                 { header: "语言", key: "languages" },
-                { header: "选剧时间", key: "curate_time" },
+                { header: "选剧时间", key: "video_created_at" },
                 { header: "拉取日期", key: "pull_date" },
                 { header: "序号", key: "pull_sequence", type: "Number" },
               ],
               data: data.map(item => ({
                 ...item,
-                curate_time: item.curate_time ? dayjs(item.curate_time).format("YYYY-MM-DD") : "-",
+                video_created_at: item.video_created_at ? dayjs(item.video_created_at).format("YYYY-MM-DD") : "-",
               }))
             }])
             downloadExcel(xml, "Dramabox选剧数据")
@@ -290,16 +290,15 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="whitespace-nowrap">序号</TableHead>
               <TableHead className="whitespace-nowrap">ID</TableHead>
               <TableHead className="whitespace-nowrap">Drama ID</TableHead>
               <TableHead className="whitespace-nowrap">API List ID</TableHead>
               <TableHead className="whitespace-nowrap">剧名</TableHead>
-              <TableHead className="whitespace-nowrap">海外剧名</TableHead>
               <TableHead className="whitespace-nowrap">类型</TableHead>
               <TableHead className="whitespace-nowrap">语言</TableHead>
               <TableHead className="whitespace-nowrap">选剧时间</TableHead>
               <TableHead className="whitespace-nowrap">拉取日期</TableHead>
-              <TableHead className="whitespace-nowrap">序号</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -321,11 +320,11 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
             ) : (
               data.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell className="whitespace-nowrap">{item.pull_sequence}</TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">{item.id}</TableCell>
                   <TableCell className="font-mono text-xs whitespace-nowrap">{item.drama_id}</TableCell>
                   <TableCell className="font-mono text-xs whitespace-nowrap">{item.api_list_id}</TableCell>
                   <TableCell className="max-w-50 truncate">{item.drama_name}</TableCell>
-                  <TableCell className="max-w-50 truncate">{item.drama_oversea_name}</TableCell>
                   <TableCell>
                     <Badge variant={exclusiveBadge[item.exclusive_type]?.variant || "outline"}>
                       {item.exclusive_type}
@@ -334,10 +333,9 @@ export function DramaboxVideoList({ languages, onNotification }: DramaboxVideoLi
                   <TableCell className="whitespace-nowrap">{item.languages}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     {/* 使用dayjs让时间戳转为日期格式 */}
-                    {item.curate_time ? dayjs(item.curate_time).format("YYYY-MM-DD") : "-"}
+                    {item.video_created_at ? dayjs(item.video_created_at).format("YYYY-MM-DD") : "-"}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{item.pull_date || "-"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{item.pull_sequence}</TableCell>
                 </TableRow>
               ))
             )}
