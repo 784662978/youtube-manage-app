@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Loader2,
   ChevronsLeft,
@@ -230,37 +231,51 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
     }
 
     const [exporting, setExporting] = React.useState(false)
+    const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set())
 
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
 
     /** URL 显示最大字符数 */
     const URL_MAX_LENGTH = 40
 
+    // 勾选逻辑
+    const allSelected = data.length > 0 && data.every((t) => selectedIds.has(t.id))
+
+    const toggleAll = () => {
+      if (allSelected) {
+        setSelectedIds(new Set())
+      } else {
+        setSelectedIds(new Set(data.map((t) => t.id)))
+      }
+    }
+
+    const toggleSelect = (id: number) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+    }
+
     const handleExportExcel = async () => {
+      if (selectedIds.size === 0) {
+        onNotification("请先勾选需要导出的任务", "error")
+        return
+      }
+
       setExporting(true)
       try {
-        // 分页拉取所有已完成任务
-        const allTasks: RemixTask[] = []
-        let currentPage = 1
-        let hasMore = true
-        while (hasMore) {
-          const result = await apiClient.get<ApiResponse<PageResponse<RemixTask>>>(
-            "/materialRemixTask/list",
-            { page: currentPage, page_size: 100, status: "completed" } as unknown as Record<string, string>
-          )
-          const resp = result.response
-          allTasks.push(...(resp.data || []))
-          hasMore = currentPage < resp.pageCount
-          currentPage++
-        }
+        // 只导出勾选的任务（从当前 data 中筛选）
+        const selectedTasks = data.filter((t) => selectedIds.has(t.id))
 
-        if (allTasks.length === 0) {
-          onNotification("没有已完成的任务可导出", "error")
+        if (selectedTasks.length === 0) {
+          onNotification("没有可导出的任务", "error")
           return
         }
 
         // 构建导出数据
-        const rows = allTasks.map((task) => {
+        const rows = selectedTasks.map((task) => {
           const row: Record<string, unknown> = {}
           for (const col of EXPORT_COLUMNS) {
             if ('composite' in col && col.composite) {
@@ -286,13 +301,13 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
         }))
 
         const wb = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(wb, ws, '已完成任务')
+        XLSX.utils.book_append_sheet(wb, ws, '混剪任务')
 
         const now = new Date()
         const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-        XLSX.writeFile(wb, `混剪任务_已完成_${dateStr}.xlsx`)
+        XLSX.writeFile(wb, `混剪任务_${dateStr}.xlsx`)
 
-        onNotification(`成功导出 ${allTasks.length} 条已完成任务`, "success")
+        onNotification(`成功导出 ${selectedTasks.length} 条任务`, "success")
       } catch (error: any) {
         onNotification(error.message || "导出失败", "error")
       } finally {
@@ -365,9 +380,9 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             创建任务
           </Button>
 
-          <Button size="sm" variant="outline" onClick={handleExportExcel} disabled={exporting}>
+          <Button size="sm" variant="outline" onClick={handleExportExcel} disabled={exporting || selectedIds.size === 0}>
             {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileSpreadsheet className="mr-2 size-4" />}
-            导出 Excel
+            导出勾选项 {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
           </Button>
         </div>
 
@@ -376,7 +391,13 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap w-8"></TableHead>
+                <TableHead className="whitespace-nowrap w-8">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="全选"
+                  />
+                </TableHead>
                 <TableHead className="whitespace-nowrap">ID</TableHead>
                 <TableHead className="whitespace-nowrap">首视频</TableHead>
                 <TableHead className="whitespace-nowrap">渠道</TableHead>
@@ -410,13 +431,22 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                   return (
                     <React.Fragment key={task.id}>
                       <TableRow className="cursor-pointer" onClick={() => toggleExpand(task.id)}>
-                        <TableCell>
-                          {isExpanded
-                            ? <ChevronDown className="size-4 text-muted-foreground" />
-                            : <ChevronRight className="size-4 text-muted-foreground" />
-                          }
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(task.id)}
+                            onCheckedChange={() => toggleSelect(task.id)}
+                            aria-label={`选择任务 ${task.id}`}
+                          />
                         </TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">{task.id}</TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          <span className="flex items-center gap-1">
+                            {isExpanded
+                              ? <ChevronDown className="size-3.5 text-muted-foreground" />
+                              : <ChevronRight className="size-3.5 text-muted-foreground" />
+                            }
+                            {task.id}
+                          </span>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap font-mono text-xs">
                           #{task.head_material_id}
                         </TableCell>

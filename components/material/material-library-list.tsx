@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { MaterialItem, MaterialListParams } from "@/lib/types/material"
 import type { ApiResponse, PageResponse } from "@/lib/types/drama"
+import dayjs from "dayjs"
 
 interface MaterialLibraryListProps {
   channels: { id: number; name: string; label: string }[]
@@ -327,6 +328,8 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
               <TableHead className="whitespace-nowrap">语言</TableHead>
               <TableHead className="whitespace-nowrap">时长</TableHead>
               <TableHead className="whitespace-nowrap">使用次数</TableHead>
+              <TableHead className="whitespace-nowrap">上传时间</TableHead>
+              <TableHead className="whitespace-nowrap">更新时间</TableHead>
               <TableHead className="whitespace-nowrap">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -361,6 +364,8 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
                   <TableCell className="whitespace-nowrap">{item.language}</TableCell>
                   <TableCell className="whitespace-nowrap">{formatDuration(item.duration_seconds)}</TableCell>
                   <TableCell className="whitespace-nowrap">{item.use_count}</TableCell>
+                  <TableCell className="whitespace-nowrap">{dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss")}</TableCell>
+                  <TableCell className="whitespace-nowrap">{dayjs(item.updated_at).format("YYYY-MM-DD HH:mm:ss")}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     <Button
                       variant="ghost"

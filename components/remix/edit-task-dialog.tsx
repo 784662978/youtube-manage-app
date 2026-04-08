@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TimeInput } from "@/components/ui/time-input"
 import { Loader2 } from "lucide-react"
 import type { RemixTask, EditRemixTaskParams } from "@/lib/types/material"
 import type { ApiResponse } from "@/lib/types/drama"
@@ -33,10 +34,10 @@ interface FormErrors {
 }
 
 export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuccess }: EditTaskDialogProps) {
-  const [startTrim, setStartTrim] = React.useState("")
-  const [endTrim, setEndTrim] = React.useState("")
-  const [hlStart, setHlStart] = React.useState("")
-  const [hlEnd, setHlEnd] = React.useState("")
+  const [startTrim, setStartTrim] = React.useState<number | undefined>(undefined)
+  const [endTrim, setEndTrim] = React.useState<number | undefined>(undefined)
+  const [hlStart, setHlStart] = React.useState<number | null>(null)
+  const [hlEnd, setHlEnd] = React.useState<number | null>(null)
   const [targetMin, setTargetMin] = React.useState("")
   const [targetMax, setTargetMax] = React.useState("")
   const [errors, setErrors] = React.useState<FormErrors>({})
@@ -44,10 +45,10 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
 
   React.useEffect(() => {
     if (task) {
-      setStartTrim(task.start_trim_seconds ? String(task.start_trim_seconds) : "")
-      setEndTrim(task.end_trim_seconds ? String(task.end_trim_seconds) : "")
-      setHlStart(task.highlight_start_seconds != null ? String(task.highlight_start_seconds) : "")
-      setHlEnd(task.highlight_end_seconds != null ? String(task.highlight_end_seconds) : "")
+      setStartTrim(task.start_trim_seconds ? Number(task.start_trim_seconds) : undefined)
+      setEndTrim(task.end_trim_seconds ? Number(task.end_trim_seconds) : undefined)
+      setHlStart(task.highlight_start_seconds != null ? Number(task.highlight_start_seconds) : null)
+      setHlEnd(task.highlight_end_seconds != null ? Number(task.highlight_end_seconds) : null)
       setTargetMin(String(task.target_min_minutes))
       setTargetMax(String(task.target_max_minutes))
     }
@@ -62,8 +63,8 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
       newErrors.target_max_minutes = "最短时长需小于最长时长"
     }
 
-    const hlS = hlStart ? Number(hlStart) : null
-    const hlE = hlEnd ? Number(hlEnd) : null
+    const hlS = hlStart
+    const hlE = hlEnd
     if ((hlS !== null) !== (hlE !== null)) {
       newErrors.highlight = "高光起点和终点需同时填写或同时留空"
     } else if (hlS !== null && hlE !== null && hlS >= hlE) {
@@ -81,10 +82,10 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
     setSaving(true)
     try {
       const body: EditRemixTaskParams = {
-        start_trim_seconds: startTrim ? Number(startTrim) : undefined,
-        end_trim_seconds: endTrim ? Number(endTrim) : undefined,
-        highlight_start_seconds: hlStart ? Number(hlStart) : null,
-        highlight_end_seconds: hlEnd ? Number(hlEnd) : null,
+        start_trim_seconds: startTrim,
+        end_trim_seconds: endTrim,
+        highlight_start_seconds: hlStart,
+        highlight_end_seconds: hlEnd,
         target_min_minutes: Number(targetMin),
         target_max_minutes: Number(targetMax),
       }
@@ -114,55 +115,39 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">开头跳过（秒）</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={startTrim}
-                  onChange={(e) => setStartTrim(e.target.value)}
-                  placeholder="0"
-                  disabled={saving}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">结尾跳过（秒）</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={endTrim}
-                  onChange={(e) => setEndTrim(e.target.value)}
-                  placeholder="0"
-                  disabled={saving}
-                />
-              </div>
+              <TimeInput
+                value={startTrim}
+                onChange={setStartTrim}
+                label="开头跳过"
+                placeholder="00:00:00"
+                disabled={saving}
+              />
+              <TimeInput
+                value={endTrim}
+                onChange={setEndTrim}
+                label="结尾跳过"
+                placeholder="00:00:00"
+                disabled={saving}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">高光起点（秒）</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={hlStart}
-                  onChange={(e) => setHlStart(e.target.value)}
-                  placeholder="留空表示不设置"
-                  disabled={saving}
-                  className={errors.highlight ? "border-red-500" : ""}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">高光终点（秒）</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={hlEnd}
-                  onChange={(e) => setHlEnd(e.target.value)}
-                  placeholder="留空表示不设置"
-                  disabled={saving}
-                  className={errors.highlight ? "border-red-500" : ""}
-                />
-              </div>
+              <TimeInput
+                value={hlStart}
+                onChange={(v) => setHlStart(v ?? null)}
+                label="高光起点"
+                placeholder="留空不设置"
+                disabled={saving}
+                error={!!errors.highlight}
+              />
+              <TimeInput
+                value={hlEnd}
+                onChange={(v) => setHlEnd(v ?? null)}
+                label="高光终点"
+                placeholder="留空不设置"
+                disabled={saving}
+                error={!!errors.highlight}
+              />
             </div>
             {errors.highlight && (
               <p className="text-xs text-red-500">{errors.highlight}</p>

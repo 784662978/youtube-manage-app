@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TimeInput } from "@/components/ui/time-input"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import type {
   CreateRemixTaskItem,
@@ -267,54 +268,38 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
 
                 {/* 裁剪参数 */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">开头跳过（秒）</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={row.start_trim_seconds}
-                      onChange={(e) => updateRow(idx, "start_trim_seconds", e.target.value)}
-                      placeholder="0"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">结尾跳过（秒）</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={row.end_trim_seconds}
-                      onChange={(e) => updateRow(idx, "end_trim_seconds", e.target.value)}
-                      placeholder="0"
-                      disabled={saving}
-                    />
-                  </div>
+                  <TimeInput
+                    value={row.start_trim_seconds ? Number(row.start_trim_seconds) : undefined}
+                    onChange={(v) => updateRow(idx, "start_trim_seconds", v !== undefined ? String(v) : "")}
+                    label="开头跳过"
+                    placeholder="00:00:00"
+                    disabled={saving}
+                  />
+                  <TimeInput
+                    value={row.end_trim_seconds ? Number(row.end_trim_seconds) : undefined}
+                    onChange={(v) => updateRow(idx, "end_trim_seconds", v !== undefined ? String(v) : "")}
+                    label="结尾跳过"
+                    placeholder="00:00:00"
+                    disabled={saving}
+                  />
                 </div>
 
                 {/* 高光区间 */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">高光起点（秒）</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={row.highlight_start_seconds}
-                      onChange={(e) => updateRow(idx, "highlight_start_seconds", e.target.value)}
-                      placeholder="留空表示不设置"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">高光终点（秒）</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={row.highlight_end_seconds}
-                      onChange={(e) => updateRow(idx, "highlight_end_seconds", e.target.value)}
-                      placeholder="留空表示不设置"
-                      disabled={saving}
-                    />
-                  </div>
+                  <TimeInput
+                    value={row.highlight_start_seconds ? Number(row.highlight_start_seconds) : null}
+                    onChange={(v) => updateRow(idx, "highlight_start_seconds", v !== undefined && v !== null ? String(v) : "")}
+                    label="高光起点"
+                    placeholder="留空不设置"
+                    disabled={saving}
+                  />
+                  <TimeInput
+                    value={row.highlight_end_seconds ? Number(row.highlight_end_seconds) : null}
+                    onChange={(v) => updateRow(idx, "highlight_end_seconds", v !== undefined && v !== null ? String(v) : "")}
+                    label="高光终点"
+                    placeholder="留空不设置"
+                    disabled={saving}
+                  />
                 </div>
 
                 {/* 目标时长 */}
