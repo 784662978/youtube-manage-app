@@ -6,7 +6,6 @@ import { apiClient } from "@/lib/api-client"
 import { NotificationType } from "@/components/ui/notification"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import * as XLSX from "xlsx"
 import {
   Table,
   TableBody,
@@ -49,7 +48,7 @@ import {
   ChevronDown,
   Download,
   AlertTriangle,
-  FileSpreadsheet,
+  FileText,
   Play,
   CheckCircle2,
   RotateCcw,
@@ -266,7 +265,6 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
 
       setExporting(true)
       try {
-        // 只导出勾选的任务（从当前 data 中筛选）
         const selectedTasks = data.filter((t) => selectedIds.has(t.id))
 
         if (selectedTasks.length === 0) {
@@ -292,20 +290,46 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
           return row
         })
 
-        // 生成 Excel
-        const ws = XLSX.utils.json_to_sheet(rows, { header: EXPORT_COLUMNS.map((c) => c.key) })
+        const headers = EXPORT_COLUMNS.map((c) => c.key)
 
-        // 设置列宽
-        ws['!cols'] = EXPORT_COLUMNS.map((c) => ({
-          wch: Math.max(c.key.length + 2, 14),
-        }))
+        // CSV 转义：包含逗号/双引号/换行时用双引号包裹，内部双引号翻倍
+        const escapeCSV = (val: unknown): string => {
+          const str = String(val ?? '')
+          if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return `"${str.replace(/"/g, '""')}"`
+          }
+          return str
+        }
 
-        const wb = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(wb, ws, '混剪任务')
+        // 拼接 CSV 内容
+        const csvLines: string[] = []
+        // 表头行
+        csvLines.push(headers.map(escapeCSV).join(','))
+        // 数据行
+        for (const row of rows) {
+          csvLines.push(headers.map((h) => escapeCSV(row[h])).join(','))
+        }
 
+        const csvContent = csvLines.join('\r\n')
+
+        // 添加 UTF-8 BOM，确保 Excel 正确识别中文编码
+        const BOM = '\uFEFF'
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' })
+
+        // 触发下载
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
         const now = new Date()
         const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-        XLSX.writeFile(wb, `混剪任务_${dateStr}.xlsx`)
+        a.download = `混剪任务_${dateStr}.csv`
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => {
+          URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        }, 3000)
 
         onNotification(`成功导出 ${selectedTasks.length} 条任务`, "success")
       } catch (error: any) {
@@ -381,7 +405,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
           </Button>
 
           <Button size="sm" variant="outline" onClick={handleExportExcel} disabled={exporting || selectedIds.size === 0}>
-            {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileSpreadsheet className="mr-2 size-4" />}
+            {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileText className="mr-2 size-4" />}
             导出勾选项 {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
           </Button>
         </div>
