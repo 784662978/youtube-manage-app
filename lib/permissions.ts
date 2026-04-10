@@ -27,43 +27,15 @@ export const PERMISSION_CONFIG: Record<UserRole, PermissionConfig> = {
       '/monitor/schedule', // 运营排期监控
       '/monitor/effect/',
       '/monitor/effect',
+      '/material/library/',
+      '/material/library',
+      '/remix/task/',
+      '/remix/task',
     ],
     hiddenComponents: [
       'schedule-summary', // 排期概况区域
     ],
   },
-}
-
-// 路由权限映射
-export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
-  '/Channel/list/': ['admin'],        // 添加尾部斜杠
-  '/Channel/list': ['admin'],         // 同时支持
-  '/Channel/monitor/': ['admin'],
-  '/Channel/monitor': ['admin'],
-  '/monitor/schedule/': ['admin', 'user'],
-  '/monitor/schedule': ['admin', 'user'],
-  '/monitor/effect/': ['admin', 'user'],
-  '/monitor/effect': ['admin', 'user'],
-  '/language/reelshort/': ['admin'],
-  '/language/reelshort': ['admin'],
-  '/language/qixing/': ['admin'],
-  '/language/qixing': ['admin'],
-  '/language/dramabox/': ['admin'],
-  '/language/dramabox': ['admin'],
-  '/drama/reelshort/': ['admin'],
-  '/drama/reelshort': ['admin'],
-  '/drama/qixing/': ['admin'],
-  '/drama/qixing': ['admin'],
-  '/drama/dramabox/': ['admin'],
-  '/drama/dramabox': ['admin'],
-  '/material/library/': ['admin'],
-  '/material/library': ['admin'],
-  '/material/channel/': ['admin'],
-  '/material/channel': ['admin'],
-  '/material/language/': ['admin'],
-  '/material/language': ['admin'],
-  '/remix/task/': ['admin'],
-  '/remix/task': ['admin'],
 }
 
 // 检查用户是否有权限访问某个路径

@@ -139,6 +139,7 @@ const allNavData: NavGroup[] = [
         url: "/material/library",
         icon: Upload,
         isActive: false,
+        allowedRoles: ['admin', 'user'],
       },
       {
         title: "渠道管理",
@@ -163,6 +164,7 @@ const allNavData: NavGroup[] = [
         url: "/remix/task",
         icon: Scissors,
         isActive: false,
+        allowedRoles: ['admin', 'user'],
       },
     ],
   },
