@@ -12,13 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Combobox } from "@/components/ui/filter-select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TimeInput } from "@/components/ui/time-input"
@@ -194,36 +188,32 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="grid gap-4 py-2 flex-1 overflow-y-auto min-h-0">
+          <div className="grid gap-4 py-2 flex-1 overflow-y-auto overflow-x-hidden min-h-0">
             {/* 渠道和语言 */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   渠道 <span className="text-red-500">*</span>
                 </Label>
-                <Select value={channel} onValueChange={setChannel} disabled={saving}>
-                  <SelectTrigger><SelectValue placeholder="选择渠道" /></SelectTrigger>
-                  <SelectContent>
-                    {channels.map((ch) => (
-                      <SelectItem key={ch.id} value={ch.name}>{ch.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={channels.map((ch) => ({ value: ch.name, label: ch.label }))}
+                  value={channel}
+                  onValueChange={setChannel}
+                  placeholder="选择渠道"
+                  disabled={saving}
+                />
               </div>
               <div className="space-y-2">
                 <Label>
                   语言 <span className="text-red-500">*</span>
                 </Label>
-                <Select value={language} onValueChange={setLanguage} disabled={saving}>
-                  <SelectTrigger><SelectValue placeholder="选择语言" /></SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.id} value={lang.name}>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={languages.map((lang) => ({ value: lang.name, label: lang.label }))}
+                  value={language}
+                  onValueChange={setLanguage}
+                  placeholder="选择语言"
+                  disabled={saving}
+                />
               </div>
             </div>
 
@@ -248,22 +238,16 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
                   <Label className="text-xs">
                     首视频素材 <span className="text-red-500">*</span>
                   </Label>
-                  <Select
+                  <Combobox
+                    options={materials.map((m) => ({
+                      value: String(m.id),
+                      label: `${m.name} (${m.duration_seconds}秒)`,
+                    }))}
                     value={row.head_material_id ? String(row.head_material_id) : ""}
                     onValueChange={(v) => updateRow(idx, "head_material_id", v)}
+                    placeholder={materialsLoading ? "加载中..." : materials.length === 0 ? "无可用素材" : "选择首视频"}
                     disabled={!channel || !language || materialsLoading || saving}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={materialsLoading ? "加载中..." : materials.length === 0 ? "无可用素材" : "选择首视频"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {materials.map((m) => (
-                        <SelectItem key={m.id} value={String(m.id)}>
-                          {m.name} ({m.duration_seconds}秒)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
 
                 {/* 裁剪参数 */}
