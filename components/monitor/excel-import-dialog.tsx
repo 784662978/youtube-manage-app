@@ -155,6 +155,12 @@ const formatDate = (value: unknown): string | null => {
       return dateStr
     }
     
+    // 处理中文日期格式：2026年4月13日、2026年04月13日
+    const cnMatch = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日?/)
+    if (cnMatch) {
+      return `${cnMatch[1]}-${cnMatch[2].padStart(2, '0')}-${cnMatch[3].padStart(2, '0')}`
+    }
+    
     // 尝试解析其他格式
     const parsed = new Date(dateStr)
     if (!isNaN(parsed.getTime())) {
@@ -270,15 +276,35 @@ export function ExcelImportDialog({
     setIsProcessing(true)
     try {
       const arrayBuffer = await file.arrayBuffer()
+      // CSV文件通常来自Excel（中文版），默认编码为GBK，需用TextDecoder手动解码避免乱码
+      // 通过BOM检测判断是否为UTF-8编码，非UTF-8的CSV使用GBK解码
+      const uint8 = new Uint8Array(arrayBuffer)
+      const isUtf8Bom = uint8.length >= 3 && uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF
+      const isCsv = file.name.toLowerCase().endsWith('.csv')
+      let readData: ArrayBuffer | string = arrayBuffer
+      if (isCsv && !isUtf8Bom) {
+        // 去掉BOM标记后按GBK解码（如有BOM则为UTF-8，直接使用arrayBuffer）
+        const offset = uint8.length >= 3 && uint8[0] === 0xFF && uint8[1] === 0xFE ? 2 : 0
+        readData = new TextDecoder('gbk').decode(offset ? uint8.slice(offset) : uint8)
+      }
       // 不使用 cellDates，让日期保持为数字序列号，避免时区问题
-      const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: false })
+      const workbook = XLSX.read(readData, {
+        type: typeof readData === 'string' ? 'string' : 'array',
+        cellDates: false,
+      })
       
       // 获取第一个工作表
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
       
-      // 转换为JSON
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet)
+      // 转换为JSON，并清理字段名中可能存在的引号（CSV解析时表头可能带引号）
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet).map((row) => {
+        const cleanRow: Record<string, unknown> = {}
+        Object.entries(row).forEach(([key, value]) => {
+          cleanRow[key.replace(/^["']|["']$/g, '').trim()] = value
+        })
+        return cleanRow
+      })
       console.log('Excel原始数据:', jsonData)
 
       // 验证每一行数据
