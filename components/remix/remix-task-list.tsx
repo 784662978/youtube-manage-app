@@ -70,6 +70,7 @@ import type {
 } from "@/lib/types/material"
 import type { ApiResponse, PageResponse } from "@/lib/types/drama"
 import type { UseDownloadManagerReturn } from "@/hooks/use-download-manager"
+import dayjs from "dayjs"
 
 interface RemixTaskListProps {
   channels: { id: number; name: string; label: string }[]
@@ -95,7 +96,7 @@ const EXPORT_COLUMNS = [
   { key: 'drama_name', label: 'drama_name', source: 'head_material_name_without_suffix' },
   { key: 'cover_url', label: 'cover_url' },
   { key: 'source_lang', label: 'source_lang', source: 'language' },
-  { key: 'copyright', label: 'channel' },
+  { key: 'copyright', label: 'channel', source: 'channel' },
   { key: 'copyright_expire', label: 'copyright_expire' },
   { key: 'level', label: 'level' },
   { key: 'total_episodes', label: 'total_episodes' },
@@ -429,13 +430,15 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                 <TableHead className="whitespace-nowrap">目标时长</TableHead>
                 <TableHead className="whitespace-nowrap">视频链接</TableHead>
                 <TableHead className="whitespace-nowrap">状态</TableHead>
+                <TableHead className="whitespace-nowrap">创建时间</TableHead>
+                <TableHead className="whitespace-nowrap">更新时间</TableHead>
                 <TableHead className="whitespace-nowrap">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-32 text-center">
+                  <TableCell colSpan={10} className="h-32 text-center">
                     <div className="flex items-center justify-center gap-2 text-muted-foreground">
                       <Loader2 className="size-4 animate-spin" />
                       加载中...
@@ -505,6 +508,12 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                         </TableCell>
                         <TableCell>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {task.created_at ? dayjs(task.created_at).format("YYYY-MM-DD HH:mm") : "-"}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {task.updated_at ? dayjs(task.updated_at).format("YYYY-MM-DD HH:mm") : "-"}
                         </TableCell>
                         
                         <TableCell>
