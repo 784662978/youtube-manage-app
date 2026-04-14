@@ -11,6 +11,7 @@ export type {
   LanguageModuleConfig,
 } from "./language"
 export type {
+  MaterialItemStatus,
   MaterialItem,
   MaterialListParams,
   PrecheckItem,

@@ -32,6 +32,7 @@ import {
   Search,
   Trash2,
   AlertTriangle,
+  Play,
 } from "lucide-react"
 import {
   AlertDialog,
@@ -43,9 +44,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { MaterialItem, MaterialListParams } from "@/lib/types/material"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import type { MaterialItem, MaterialListParams, MaterialItemStatus } from "@/lib/types/material"
 import type { ApiResponse, PageResponse } from "@/lib/types/drama"
 import dayjs from "dayjs"
+
+const MATERIAL_STATUS_BADGE: Record<MaterialItemStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  pending: { label: "待处理", variant: "outline" },
+  processing: { label: "处理中", variant: "secondary" },
+  completed: { label: "已完成", variant: "default" },
+  failed: { label: "失败", variant: "destructive" },
+}
 
 interface MaterialLibraryListProps {
   channels: { id: number; name: string; label: string }[]
@@ -116,6 +136,9 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
     ids: number[]
     itemName?: string
   } | null>(null)
+
+  // 视频预览弹窗
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -328,6 +351,8 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
               <TableHead className="whitespace-nowrap">语言</TableHead>
               <TableHead className="whitespace-nowrap">时长</TableHead>
               <TableHead className="whitespace-nowrap">使用次数</TableHead>
+              <TableHead className="whitespace-nowrap">素材状态</TableHead>
+              <TableHead className="whitespace-nowrap">视频链接</TableHead>
               <TableHead className="whitespace-nowrap">上传时间</TableHead>
               <TableHead className="whitespace-nowrap">更新时间</TableHead>
               <TableHead className="whitespace-nowrap">操作</TableHead>
@@ -336,7 +361,7 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-32 text-center">
+                <TableCell colSpan={12} className="h-32 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="size-4 animate-spin" />
                     加载中...
@@ -345,7 +370,7 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="h-32 text-center text-muted-foreground">
                   暂无数据
                 </TableCell>
               </TableRow>
@@ -364,6 +389,34 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
                   <TableCell className="whitespace-nowrap">{item.language}</TableCell>
                   <TableCell className="whitespace-nowrap">{formatDuration(item.duration_seconds)}</TableCell>
                   <TableCell className="whitespace-nowrap">{item.use_count}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {(() => {
+                      const badge = MATERIAL_STATUS_BADGE[item.material_status] || { label: item.material_status, variant: "outline" as const }
+                      return <Badge variant={badge.variant}>{badge.label}</Badge>
+                    })()}
+                  </TableCell>
+                  <TableCell className="max-w-50" onClick={(e) => e.stopPropagation()}>
+                    {item.oss ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className="flex items-center gap-1.5 text-xs text-primary hover:underline cursor-pointer w-full text-left"
+                            onClick={() => setPreviewUrl(item.oss)}
+                          >
+                            <Play className="size-3 shrink-0" />
+                            <span className="truncate">
+                              {item.oss.length > 40 ? item.oss.slice(0, 40) + '...' : item.oss}
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-md break-all">
+                          {item.oss}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">{dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss")}</TableCell>
                   <TableCell className="whitespace-nowrap">{dayjs(item.updated_at).format("YYYY-MM-DD HH:mm:ss")}</TableCell>
                   <TableCell className="whitespace-nowrap">
@@ -477,6 +530,29 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 视频预览弹窗 */}
+      <Dialog open={!!previewUrl} onOpenChange={(open) => { if (!open) setPreviewUrl(null) }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Play className="size-5" />
+              视频预览
+            </DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <div className="aspect-video w-full rounded-md overflow-hidden bg-black">
+              <video
+                key={previewUrl}
+                src={previewUrl}
+                controls
+                autoPlay
+                className="w-full h-full"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
   }

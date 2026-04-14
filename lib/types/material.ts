@@ -4,6 +4,8 @@ import type { ApiResponse, PageResponse } from './drama'
 
 // ==================== 素材库 ====================
 
+export type MaterialItemStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
 export interface MaterialItem {
   id: number
   name: string
@@ -12,6 +14,7 @@ export interface MaterialItem {
   duration_seconds: number
   oss: string
   use_count: number
+  material_status: MaterialItemStatus
   created_at: string
   updated_at: string
 }
@@ -110,7 +113,7 @@ export interface StsCredentials {
 
 // ==================== 混剪任务 ====================
 
-export type RemixTaskStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type RemixTaskStatus = 'pending' | 'waiting_material' | 'processing' | 'completed' | 'failed'
 
 export interface RemixTaskItem {
   material_id: number

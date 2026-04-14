@@ -115,6 +115,7 @@ const EXPORT_COLUMNS = [
 
 const TASK_STATUS_BADGE: Record<RemixTaskStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "待处理", variant: "outline" },
+  waiting_material: { label: "等待素材处理", variant: "outline" },
   processing: { label: "处理中", variant: "secondary" },
   completed: { label: "已完成", variant: "default" },
   failed: { label: "异常", variant: "destructive" },
@@ -123,6 +124,7 @@ const TASK_STATUS_BADGE: Record<RemixTaskStatus, { label: string; variant: "defa
 const STATUS_OPTIONS: { value: RemixTaskStatus | ""; label: string }[] = [
   { value: "", label: "全部状态" },
   { value: "pending", label: "待处理" },
+  { value: "waiting_material", label: "等待素材处理" },
   { value: "processing", label: "处理中" },
   { value: "completed", label: "已完成" },
   { value: "failed", label: "异常" },
@@ -591,7 +593,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                                 </Button>
                               )
                             })()}
-                            {task.status === "pending" && (
+                            {(task.status === "pending" || task.status === "waiting_material") && (
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onEditTask(task)}>
                                 <Pencil className="mr-1 size-3" />
                                 编辑
