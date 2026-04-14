@@ -161,16 +161,24 @@ export function UploadDialog({ open, onOpenChange, channels, languages, onNotifi
         const ossPath = `${credentials.upload_path}/${fullObjectName}`
 
         // 上传到 OSS
-        await uploadFileToOss(f.file, ossPath)
+        try {
+          await uploadFileToOss(f.file, ossPath)
+        } catch (ossError: any) {
+          throw new Error(`OSS上传失败: ${ossError.message || '未知错误'}`)
+        }
 
         // 写入元数据
-        await apiClient.post("/materialLibrary/upload", {
-          name: f.name,
-          channel: f.channel,
-          language: f.language,
-          duration_seconds: f.duration_seconds,
-          oss: ossPath,
-        })
+        try {
+          await apiClient.post("/materialLibrary/upload", {
+            name: f.name,
+            channel: f.channel,
+            language: f.language,
+            duration_seconds: f.duration_seconds,
+            oss: ossPath,
+          })
+        } catch (apiError: any) {
+          throw new Error(`数据提交失败: ${apiError.message || '未知错误'}`)
+        }
 
         setFiles((prev) =>
           prev.map((item) =>
