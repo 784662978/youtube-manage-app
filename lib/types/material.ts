@@ -125,6 +125,7 @@ export interface RemixTaskItem {
 export interface RemixTask {
   id: number
   head_material_id: number
+  head_material_name_without_suffix?: string
   channel: string
   language: string
   status: RemixTaskStatus

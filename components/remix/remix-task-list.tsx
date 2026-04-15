@@ -97,8 +97,8 @@ const EXPORT_COLUMNS = [
   { key: 'cover_url', label: 'cover_url' },
   { key: 'source_lang', label: 'source_lang', source: 'language' },
   { key: 'copyright', label: 'channel', source: 'channel' },
-  { key: 'copyright_expire', label: 'copyright_expire' },
-  { key: 'level', label: 'level' },
+  { key: 'copyright_expire', label: 'copyright_expire', default: '2099-1-1' },
+  { key: 'level', label: 'level', default: 'A' },
   { key: 'total_episodes', label: 'total_episodes' },
   { key: 'tags', label: 'tags' },
   { key: 'summary', label: 'summary' },
@@ -106,11 +106,11 @@ const EXPORT_COLUMNS = [
   { key: 'created_at', label: 'created_at' },
   { key: 'target_lang', label: 'target_lang', source: 'target_lang' },
   { key: 'merged_url', label: 'merged_url', source: 'result_oss' },
-  { key: 'skip_transfer', label: 'skip_transfer' },
+  { key: 'skip_transfer', label: 'skip_transfer', default: 'TRUE' },
   { key: 'merged_subtitle_ref', label: 'merged_subtitle_ref' },
   { key: 'merged_subtitle_format', label: 'merged_subtitle_format' },
   { key: 'version_label', label: 'version_label', composite: ['channel', 'language'] as const },
-  { key: 'delivery_mode', label: 'delivery_mode' },
+  { key: 'delivery_mode', label: 'delivery_mode', default: 'mixed' },
 ] as const
 
 const TASK_STATUS_BADGE: Record<RemixTaskStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -282,12 +282,13 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             if ('composite' in col && col.composite) {
               const taskRecord = task as unknown as Record<string, unknown>
               const parts = col.composite.map((k) => taskRecord[k] ?? '')
-              row[col.key] = parts.filter(Boolean).join('_')
+              const value = parts.filter(Boolean).join('_')
+              row[col.key] = value || ('default' in col ? col.default : '')
             } else if ('source' in col && col.source) {
               const value = (task as unknown as Record<string, unknown>)[col.source!]
-              row[col.key] = value ?? ''
+              row[col.key] = value ?? ('default' in col ? col.default : '')
             } else {
-              row[col.key] = ''
+              row[col.key] = 'default' in col ? col.default : ''
             }
           }
           return row
@@ -426,7 +427,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                   />
                 </TableHead>
                 <TableHead className="whitespace-nowrap">ID</TableHead>
-                <TableHead className="whitespace-nowrap">首视频</TableHead>
+                <TableHead className="whitespace-nowrap">剧名</TableHead>
                 <TableHead className="whitespace-nowrap">渠道</TableHead>
                 <TableHead className="whitespace-nowrap">语言</TableHead>
                 <TableHead className="whitespace-nowrap">目标时长</TableHead>
@@ -476,8 +477,8 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                             {task.id}
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap font-mono text-xs">
-                          #{task.head_material_id}
+                        <TableCell className="whitespace-nowrap text-sm max-w-50 truncate" title={task.head_material_name_without_suffix}>
+                          {task.head_material_name_without_suffix}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{task.channel}</TableCell>
                         <TableCell className="whitespace-nowrap">{task.language}</TableCell>
