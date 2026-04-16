@@ -66,11 +66,20 @@ if (mode === 'full') {
       } catch (e) {}
   }
 } else {
-    console.log('[1/4] Incremental mode. Keeping cache.');
+    console.log('[1/5] Incremental mode. Keeping cache.');
 }
 
-// 2. Run Build
-console.log('[2/4] Running Next.js Build...');
+// 2. Generate version info
+console.log('[2/5] Generating version info...');
+try {
+  execSync('node scripts/generate-version.js', { stdio: 'inherit', cwd: ROOT_DIR });
+} catch (error) {
+  console.error('❌ Failed to generate version info!');
+  process.exit(1);
+}
+
+// 3. Run Build
+console.log('[3/5] Running Next.js Build...');
 try {
   // Use npx to ensure we use local next version
   execSync('npx next build', { stdio: 'inherit', cwd: ROOT_DIR });
@@ -79,8 +88,8 @@ try {
   process.exit(1);
 }
 
-// 3. Handle Output Directory Move
-console.log('[3/4] Processing Output Directory...');
+// 4. Handle Output Directory Move
+console.log('[4/5] Processing Output Directory...');
 if (OUT_DIR !== DEFAULT_NEXT_OUT) {
     if (fs.existsSync(DEFAULT_NEXT_OUT)) {
         console.log(`  - Moving build output from 'out' to '${customOutDir}'...`);

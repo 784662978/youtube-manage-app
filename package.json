@@ -10,7 +10,11 @@
     "export": "node scripts/export-static.js",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "generate-version": "node scripts/generate-version.js",
+    "version:patch": "npm version patch --no-git-tag-version && node scripts/generate-version.js",
+    "version:minor": "npm version minor --no-git-tag-version && node scripts/generate-version.js",
+    "version:major": "npm version major --no-git-tag-version && node scripts/generate-version.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
