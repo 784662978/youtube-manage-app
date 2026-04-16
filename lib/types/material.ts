@@ -138,6 +138,7 @@ export interface RemixTask {
   highlight_end_seconds?: number | null
   target_min_minutes: number
   concat_file_count?: number
+  error_message?: string | null
   items: RemixTaskItem[]
   created_at?: string
   updated_at?: string

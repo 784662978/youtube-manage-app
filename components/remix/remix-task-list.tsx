@@ -529,7 +529,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="h-32 text-center">
+                  <TableCell colSpan={13} className="h-32 text-center">
                     <div className="flex items-center justify-center gap-2 text-muted-foreground">
                       <Loader2 className="size-4 animate-spin" />
                       加载中...
@@ -538,7 +538,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                 </TableRow>
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={13} className="h-32 text-center text-muted-foreground">
                     暂无数据
                   </TableCell>
                 </TableRow>
@@ -602,7 +602,14 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          <div className="space-y-0.5">
+                            <Badge variant={badge.variant}>{badge.label}</Badge>
+                            {task.status === "failed" && task.error_message && (
+                              <p className="text-xs text-destructive max-w-40 truncate" title={task.error_message}>
+                                {task.error_message}
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                           {task.created_at ? dayjs(task.created_at).format("YYYY-MM-DD HH:mm") : "-"}
@@ -707,7 +714,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                       </TableRow>
                       {isExpanded && task.items.length > 0 && (
                         <TableRow>
-                          <TableCell colSpan={10} className="bg-muted/30 px-8 py-2">
+                          <TableCell colSpan={13} className="bg-muted/30 px-8 py-2">
                             <div className="text-xs font-medium mb-2 text-muted-foreground">素材明细</div>
                             <div className="space-y-1">
                               {task.items.map((item, idx) => (
