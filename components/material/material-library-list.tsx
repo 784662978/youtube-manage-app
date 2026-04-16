@@ -33,6 +33,7 @@ import {
   Trash2,
   AlertTriangle,
   Play,
+  FileText
 } from "lucide-react"
 import {
   AlertDialog,
@@ -119,11 +120,13 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
   const [channel, setChannel] = React.useState("")
   const [language, setLanguage] = React.useState("")
   const [name, setName] = React.useState("")
+  const [materialStatus, setMaterialStatus] = React.useState<MaterialItemStatus | "">("")
 
   const [searchParams, setSearchParams] = React.useState({
     channel: "",
     language: "",
     name: "",
+    material_status: "" as MaterialItemStatus | "",
   })
 
   // 批量选择
@@ -140,6 +143,9 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
   // 视频预览弹窗
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
 
+  // 导出
+  const [exporting, setExporting] = React.useState(false)
+
   const fetchData = React.useCallback(async () => {
     setLoading(true)
     try {
@@ -147,6 +153,7 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
       if (searchParams.channel) params.channel = searchParams.channel
       if (searchParams.language) params.language = searchParams.language
       if (searchParams.name) params.name = searchParams.name
+      if (searchParams.material_status) params.material_status = searchParams.material_status
 
       const result = await apiClient.get<ApiResponse<PageResponse<MaterialItem>>>(
         "/materialLibrary/list",
@@ -169,7 +176,7 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
   React.useEffect(() => { fetchData() }, [fetchData])
 
   const handleSearch = () => {
-    setSearchParams({ channel, language, name })
+    setSearchParams({ channel, language, name, material_status: materialStatus })
     setPage(1)
   }
 
@@ -259,6 +266,79 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
     }
   }
 
+  const handleExportAll = async () => {
+    setExporting(true)
+    try {
+      const allData: MaterialItem[] = []
+      let currentPage = 1
+      const fetchPageSize = 100
+      let hasMore = true
+
+      while (hasMore) {
+        const params: MaterialListParams = { page: currentPage, page_size: fetchPageSize }
+        if (searchParams.channel) params.channel = searchParams.channel
+        if (searchParams.language) params.language = searchParams.language
+        if (searchParams.name) params.name = searchParams.name
+        if (searchParams.material_status) params.material_status = searchParams.material_status
+
+        const result = await apiClient.get<ApiResponse<PageResponse<MaterialItem>>>(
+          "/materialLibrary/list",
+          params as Record<string, string>
+        )
+        const resp = result.response
+        const items = resp.data || []
+        allData.push(...items)
+        hasMore = currentPage < resp.pageCount
+        currentPage++
+      }
+
+      if (allData.length === 0) {
+        onNotification("没有可导出的数据", "error")
+        return
+      }
+
+      const headers = ["ID", "名称"]
+      const escapeCSV = (val: unknown): string => {
+        const str = String(val ?? '')
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          return `"${str.replace(/"/g, '""')}"`
+        }
+        return str
+      }
+      const escapeCSVAsText = (val: unknown): string => {
+        const str = String(val ?? '')
+        return `"\t${str.replace(/"/g, '""')}"`
+      }
+
+      const csvLines: string[] = [headers.map(escapeCSV).join(',')]
+      for (const item of allData) {
+        csvLines.push([escapeCSVAsText(item.id), escapeCSV(item.name)].join(','))
+      }
+
+      const BOM = '\uFEFF'
+      const blob = new Blob([BOM + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const now = new Date()
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+      a.download = `素材库_${dateStr}.csv`
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }, 3000)
+
+      onNotification(`成功导出 ${allData.length} 条素材`, "success")
+    } catch (error: any) {
+      onNotification(error.message || "导出失败", "error")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const totalPages = pageCount || 1
   const pageNumbers = generatePageNumbers(page, totalPages)
 
@@ -303,6 +383,22 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
         </div>
 
         <div className="flex items-center gap-1.5">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">素材状态</span>
+          <Select value={materialStatus || "__all__"} onValueChange={(v) => setMaterialStatus(v === "__all__" ? "" : (v as MaterialItemStatus))}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">全部状态</SelectItem>
+              <SelectItem value="pending">待处理</SelectItem>
+              <SelectItem value="processing">处理中</SelectItem>
+              <SelectItem value="completed">已完成</SelectItem>
+              <SelectItem value="failed">失败</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-1.5">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -315,6 +411,11 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
         <Button size="sm" onClick={handleSearch} disabled={loading}>
           {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Search className="mr-2 size-4" />}
           搜索
+        </Button>
+
+        <Button size="sm" variant="outline" onClick={handleExportAll} disabled={exporting || loading}>
+          {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileText className="mr-2 size-4" />}
+          导出全部
         </Button>
       </div>
 

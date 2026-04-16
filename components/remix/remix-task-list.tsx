@@ -304,14 +304,20 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
           }
           return str
         }
+        // 强制文本格式：避免 Excel 将长数字显示为科学计数法
+        const escapeCSVAsText = (val: unknown): string => {
+          const str = String(val ?? '')
+          return `"\t${str.replace(/"/g, '""')}"`
+        }
 
         // 拼接 CSV 内容
         const csvLines: string[] = []
         // 表头行
         csvLines.push(headers.map(escapeCSV).join(','))
-        // 数据行
+        // 数据行：ID 列（第一个 key）用文本格式
+        const idKey = headers[0]
         for (const row of rows) {
-          csvLines.push(headers.map((h) => escapeCSV(row[h])).join(','))
+          csvLines.push(headers.map((h) => h === idKey ? escapeCSVAsText(row[h]) : escapeCSV(row[h])).join(','))
         }
 
         const csvContent = csvLines.join('\r\n')
@@ -340,6 +346,81 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
         onNotification(error.message || "导出失败", "error")
       } finally {
         setExporting(false)
+      }
+    }
+
+    const [exportingDetail, setExportingDetail] = React.useState(false)
+
+    const handleExportMaterialDetail = async () => {
+      if (selectedIds.size === 0) {
+        onNotification("请先勾选需要导出的任务", "error")
+        return
+      }
+
+      setExportingDetail(true)
+      try {
+        const selectedTasks = data.filter((t) => selectedIds.has(t.id))
+
+        if (selectedTasks.length === 0) {
+          onNotification("没有可导出的任务", "error")
+          return
+        }
+
+        const headers = ["合集", "首剧首剧名", "合集其他剧目"]
+        const escapeCSV = (val: unknown): string => {
+          const str = String(val ?? '')
+          if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return `"${str.replace(/"/g, '""')}"`
+          }
+          return str
+        }
+        const escapeCSVAsText = (val: unknown): string => {
+          const str = String(val ?? '')
+          return `"\t${str.replace(/"/g, '""')}"`
+        }
+
+        const csvLines: string[] = [headers.map(escapeCSV).join(',')]
+
+        for (const task of selectedTasks) {
+          const otherItems = task.items.filter((item) => item.material_id !== task.head_material_id)
+          if (otherItems.length === 0) {
+            csvLines.push([
+              escapeCSVAsText(task.id),
+              escapeCSV(task.head_material_name_without_suffix ?? ''),
+              escapeCSV(''),
+            ].join(','))
+          } else {
+            for (const item of otherItems) {
+              csvLines.push([
+                escapeCSVAsText(task.id),
+                escapeCSV(task.head_material_name_without_suffix ?? ''),
+                escapeCSV(item.material_name),
+              ].join(','))
+            }
+          }
+        }
+
+        const BOM = '\uFEFF'
+        const blob = new Blob([BOM + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        const now = new Date()
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+        a.download = `素材明细_${dateStr}.csv`
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => {
+          URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        }, 3000)
+
+        onNotification(`成功导出 ${selectedTasks.length} 条任务的素材明细`, "success")
+      } catch (error: any) {
+        onNotification(error.message || "导出失败", "error")
+      } finally {
+        setExportingDetail(false)
       }
     }
 
@@ -411,6 +492,11 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
           <Button size="sm" variant="outline" onClick={handleExportExcel} disabled={exporting || selectedIds.size === 0}>
             {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileText className="mr-2 size-4" />}
             导出勾选项 {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+          </Button>
+
+          <Button size="sm" variant="outline" onClick={handleExportMaterialDetail} disabled={exportingDetail || selectedIds.size === 0}>
+            {exportingDetail ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileText className="mr-2 size-4" />}
+            导出素材明细 {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
           </Button>
         </div>
 

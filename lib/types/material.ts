@@ -25,6 +25,7 @@ export interface MaterialListParams {
   channel?: string
   language?: string
   name?: string
+  material_status?: MaterialItemStatus
 }
 
 export interface PrecheckItem {
