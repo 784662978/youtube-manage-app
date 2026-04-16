@@ -29,7 +29,7 @@ interface EditTaskDialogProps {
 
 interface FormErrors {
   target_min_minutes?: string
-  target_max_minutes?: string
+  concat_file_count?: string
   highlight?: string
 }
 
@@ -39,7 +39,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
   const [hlStart, setHlStart] = React.useState<number | null>(null)
   const [hlEnd, setHlEnd] = React.useState<number | null>(null)
   const [targetMin, setTargetMin] = React.useState("")
-  const [targetMax, setTargetMax] = React.useState("")
+  const [concatFileCount, setConcatFileCount] = React.useState("3")
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [saving, setSaving] = React.useState(false)
 
@@ -50,18 +50,16 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
       setHlStart(task.highlight_start_seconds != null ? Number(task.highlight_start_seconds) : null)
       setHlEnd(task.highlight_end_seconds != null ? Number(task.highlight_end_seconds) : null)
       setTargetMin(String(task.target_min_minutes))
-      setTargetMax(String(task.target_max_minutes))
+      setConcatFileCount(task.concat_file_count != null ? String(task.concat_file_count) : "3")
     }
     setErrors({})
   }, [task, open])
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {}
-    if (!targetMin || Number(targetMin) <= 0) newErrors.target_min_minutes = "最短时长需大于0"
-    if (!targetMax || Number(targetMax) <= 0) newErrors.target_max_minutes = "最长时长需大于0"
-    if (targetMin && targetMax && Number(targetMin) >= Number(targetMax)) {
-      newErrors.target_max_minutes = "最短时长需小于最长时长"
-    }
+    if (!targetMin || Number(targetMin) <= 0) newErrors.target_min_minutes = "目标时长需大于0"
+    const cfc = concatFileCount ? Number(concatFileCount) : 0
+    if (cfc < 0 || cfc > 20) newErrors.concat_file_count = "拼接条数范围 0~20，0或未传默认3"
 
     const hlS = hlStart
     const hlE = hlEnd
@@ -87,7 +85,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
         highlight_start_seconds: hlStart,
         highlight_end_seconds: hlEnd,
         target_min_minutes: Number(targetMin),
-        target_max_minutes: Number(targetMax),
+        concat_file_count: concatFileCount ? Number(concatFileCount) : undefined,
       }
 
       await apiClient.post(`/materialRemixTask/edit/${task.id}`, body)
