@@ -40,7 +40,7 @@ interface TaskRow {
   highlight_start_seconds: string
   highlight_end_seconds: string
   target_min_minutes: string
-  target_max_minutes: string
+  concat_file_count: string
 }
 
 interface FormErrors {
@@ -55,7 +55,7 @@ const emptyRow = (): TaskRow => ({
   highlight_start_seconds: "",
   highlight_end_seconds: "",
   target_min_minutes: "",
-  target_max_minutes: "",
+  concat_file_count: "3",
 })
 
 export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNotification, onSuccess }: CreateTaskDialogProps) {
@@ -113,14 +113,9 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
     rows.forEach((row, idx) => {
       const rowErrors: string[] = []
       if (!row.head_material_id) rowErrors.push("首视频不能为空")
-      if (!row.target_min_minutes || Number(row.target_min_minutes) <= 0) rowErrors.push("最短时长需大于0")
-      if (!row.target_max_minutes || Number(row.target_max_minutes) <= 0) rowErrors.push("最长时长需大于0")
-      if (
-        row.target_min_minutes && row.target_max_minutes &&
-        Number(row.target_min_minutes) >= Number(row.target_max_minutes)
-      ) {
-        rowErrors.push("最短时长需小于最长时长")
-      }
+      if (!row.target_min_minutes || Number(row.target_min_minutes) <= 0) rowErrors.push("目标时长需大于0")
+      const cfc = row.concat_file_count ? Number(row.concat_file_count) : 0
+      if (cfc < 0 || cfc > 20) rowErrors.push("拼接条数范围 0~20，0或未传默认3")
 
       const hlStart = row.highlight_start_seconds ? Number(row.highlight_start_seconds) : null
       const hlEnd = row.highlight_end_seconds ? Number(row.highlight_end_seconds) : null
@@ -154,7 +149,7 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
         highlight_start_seconds: row.highlight_start_seconds ? Number(row.highlight_start_seconds) : null,
         highlight_end_seconds: row.highlight_end_seconds ? Number(row.highlight_end_seconds) : null,
         target_min_minutes: Number(row.target_min_minutes),
-        target_max_minutes: Number(row.target_max_minutes),
+        concat_file_count: row.concat_file_count ? Number(row.concat_file_count) : undefined,
       }))
 
       const result = await apiClient.post<ApiResponse<CreateRemixTaskResponse>>(
@@ -286,11 +281,11 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
                   />
                 </div>
 
-                {/* 目标时长 */}
+                {/* 目标时长 & 拼接条数 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">
-                      最短时长（分钟）<span className="text-red-500">*</span>
+                      目标最小时长（分钟）<span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="number"
@@ -303,14 +298,15 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">
-                      最长时长（分钟）<span className="text-red-500">*</span>
+                      非机池首素材条数
                     </Label>
                     <Input
                       type="number"
-                      min="1"
-                      value={row.target_max_minutes}
-                      onChange={(e) => updateRow(idx, "target_max_minutes", e.target.value)}
-                      placeholder="120"
+                      min="0"
+                      max="20"
+                      value={row.concat_file_count}
+                      onChange={(e) => updateRow(idx, "concat_file_count", e.target.value)}
+                      placeholder="3"
                       disabled={saving}
                     />
                   </div>

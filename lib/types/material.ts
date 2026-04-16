@@ -131,12 +131,13 @@ export interface RemixTask {
   language: string
   status: RemixTaskStatus
   result_oss: string | null
+  result_duration_seconds: number | null
   start_trim_seconds?: number
   end_trim_seconds?: number
   highlight_start_seconds?: number | null
   highlight_end_seconds?: number | null
   target_min_minutes: number
-  target_max_minutes: number
+  concat_file_count?: number
   items: RemixTaskItem[]
   created_at?: string
   updated_at?: string
@@ -157,7 +158,7 @@ export interface CreateRemixTaskItem {
   highlight_start_seconds?: number | null
   highlight_end_seconds?: number | null
   target_min_minutes: number
-  target_max_minutes: number
+  concat_file_count?: number
 }
 
 export interface CreateRemixTaskParams {
@@ -174,7 +175,7 @@ export interface EditRemixTaskParams {
   highlight_start_seconds?: number | null
   highlight_end_seconds?: number | null
   target_min_minutes: number
-  target_max_minutes: number
+  concat_file_count?: number
 }
 
 // ==================== 素材上传辅助 ====================

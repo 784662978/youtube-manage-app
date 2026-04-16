@@ -517,6 +517,8 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                 <TableHead className="whitespace-nowrap">渠道</TableHead>
                 <TableHead className="whitespace-nowrap">语言</TableHead>
                 <TableHead className="whitespace-nowrap">目标时长</TableHead>
+                <TableHead className="whitespace-nowrap">拼接条数</TableHead>
+                <TableHead className="whitespace-nowrap">成片时长</TableHead>
                 <TableHead className="whitespace-nowrap">视频链接</TableHead>
                 <TableHead className="whitespace-nowrap">状态</TableHead>
                 <TableHead className="whitespace-nowrap">创建时间</TableHead>
@@ -527,7 +529,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="h-32 text-center">
+                  <TableCell colSpan={12} className="h-32 text-center">
                     <div className="flex items-center justify-center gap-2 text-muted-foreground">
                       <Loader2 className="size-4 animate-spin" />
                       加载中...
@@ -536,7 +538,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                 </TableRow>
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="h-32 text-center text-muted-foreground">
                     暂无数据
                   </TableCell>
                 </TableRow>
@@ -569,7 +571,11 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                         <TableCell className="whitespace-nowrap">{task.channel}</TableCell>
                         <TableCell className="whitespace-nowrap">{task.language}</TableCell>
                         <TableCell className="whitespace-nowrap">
-                          {task.target_min_minutes}-{task.target_max_minutes}分钟
+                          ≥{task.target_min_minutes}分钟
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{task.concat_file_count ?? 3}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {task.result_duration_seconds != null ? `${Math.floor(task.result_duration_seconds / 60)}分${task.result_duration_seconds % 60}秒` : '-'}
                         </TableCell>
                         <TableCell className="max-w-50" onClick={(e) => e.stopPropagation()}>
                           {task.result_oss ? (
@@ -701,7 +707,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                       </TableRow>
                       {isExpanded && task.items.length > 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="bg-muted/30 px-8 py-2">
+                          <TableCell colSpan={10} className="bg-muted/30 px-8 py-2">
                             <div className="text-xs font-medium mb-2 text-muted-foreground">素材明细</div>
                             <div className="space-y-1">
                               {task.items.map((item, idx) => (

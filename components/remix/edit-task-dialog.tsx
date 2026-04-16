@@ -156,7 +156,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">
-                  最短时长（分钟）<span className="text-red-500">*</span>
+                  目标最小时长（分钟）<span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="number"
@@ -172,18 +172,19 @@ export function EditTaskDialog({ open, onOpenChange, task, onNotification, onSuc
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">
-                  最长时长（分钟）<span className="text-red-500">*</span>
+                  非机池首素材条数
                 </Label>
                 <Input
                   type="number"
-                  min="1"
-                  value={targetMax}
-                  onChange={(e) => setTargetMax(e.target.value)}
+                  min="0"
+                  max="20"
+                  value={concatFileCount}
+                  onChange={(e) => setConcatFileCount(e.target.value)}
                   disabled={saving}
-                  className={errors.target_max_minutes ? "border-red-500" : ""}
+                  className={errors.concat_file_count ? "border-red-500" : ""}
                 />
-                {errors.target_max_minutes && (
-                  <p className="text-xs text-red-500">{errors.target_max_minutes}</p>
+                {errors.concat_file_count && (
+                  <p className="text-xs text-red-500">{errors.concat_file_count}</p>
                 )}
               </div>
             </div>
