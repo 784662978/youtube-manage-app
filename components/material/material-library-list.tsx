@@ -312,7 +312,8 @@ export const MaterialLibraryList = React.forwardRef<MaterialLibraryListRef, Mate
 
       const csvLines: string[] = [headers.map(escapeCSV).join(',')]
       for (const item of allData) {
-        csvLines.push([escapeCSVAsText(item.id), escapeCSV(item.name)].join(','))
+        const nameWithoutExt = item.name.replace(/\.[^/.]+$/, '')
+        csvLines.push([escapeCSVAsText(item.id), escapeCSV(nameWithoutExt)].join(','))
       }
 
       const BOM = '\uFEFF'
