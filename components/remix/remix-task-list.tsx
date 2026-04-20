@@ -366,7 +366,7 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
           return
         }
 
-        const headers = ["合集", "首剧首剧名", "合集其他剧目"]
+        const headers = ["合集", "首剧首剧名", "合集其他剧目", "创建时间", "更新时间"]
         const escapeCSV = (val: unknown): string => {
           const str = String(val ?? '')
           if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
@@ -388,6 +388,8 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
               escapeCSVAsText(task.id),
               escapeCSV(task.head_material_name_without_suffix ?? ''),
               escapeCSV(''),
+              escapeCSV(dayjs(task.created_at).format('YYYY-MM-DD HH:mm:ss')?? ''),
+              escapeCSV(dayjs(task.updated_at).format('YYYY-MM-DD HH:mm:ss') ?? '')
             ].join(','))
           } else {
             for (const item of otherItems) {
@@ -395,6 +397,8 @@ export const RemixTaskList = React.forwardRef<RemixTaskListRef, RemixTaskListPro
                 escapeCSVAsText(task.id),
                 escapeCSV(task.head_material_name_without_suffix ?? ''),
                 escapeCSV(item.material_name),
+                escapeCSV(dayjs(task.created_at).format('YYYY-MM-DD HH:mm:ss')?? ''),
+                escapeCSV(dayjs(task.updated_at).format('YYYY-MM-DD HH:mm:ss') ?? '')
               ].join(','))
             }
           }

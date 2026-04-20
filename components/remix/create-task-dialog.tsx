@@ -84,7 +84,7 @@ export function CreateTaskDialog({ open, onOpenChange, channels, languages, onNo
     try {
       const result = await apiClient.get<ApiResponse<PageResponse<MaterialItem>>>(
         "/materialLibrary/list",
-        { page: "1", page_size: "200", channel, language }
+        { page: "1", page_size: "2000000000", channel, language }
       )
       setMaterials(result.response.data || [])
     } catch { setMaterials([]) }
