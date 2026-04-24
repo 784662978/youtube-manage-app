@@ -2,7 +2,7 @@
 
 import { useChat } from '@ai-sdk/react'
 import { TextStreamChatTransport, UIMessage } from 'ai'
-import { Send, Loader2, Bot, User, Trash2, Plus, MessageSquare, Menu, X, Sparkles, Image as ImageIcon, Download, Copy, Check } from 'lucide-react'
+import { Send, Loader2, Bot, User, Trash2, Plus, MessageSquare, Menu, X, Sparkles, Image as ImageIcon, Download, Copy, Check, Settings2, Minus } from 'lucide-react'
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,39 @@ const AI_MODELS = [
 
 type ModelId = typeof AI_MODELS[number]['id']
 
+// 图片生成模型配置
+const IMAGE_MODELS = [
+  {
+    id: 'seedream-5.0-lite',
+    name: 'Seedream 5.0 Lite',
+    description: '最新轻量版 · 速度快',
+    icon: '⚡',
+  },
+  {
+    id: 'seedream-4.5',
+    name: 'Seedream 4.5',
+    description: '进阶版 · 画质优',
+    icon: '✨',
+  },
+  {
+    id: 'seedream-4.0',
+    name: 'Seedream 4.0',
+    description: '稳定版 · 高质量',
+    icon: '🎯',
+  },
+] as const
+
+type ImageModelId = typeof IMAGE_MODELS[number]['id']
+
+// 支持的图片尺寸
+const IMAGE_SIZES = [
+  { id: '1024x1024', name: '1:1 方形', description: '1024×1024' },
+  { id: '1280x720', name: '16:9 横屏', description: '1280×720' },
+  { id: '720x1280', name: '9:16 竖屏', description: '720×1280' },
+  { id: '768x768', name: '1:1 中等', description: '768×768' },
+  { id: '512x512', name: '1:1 小图', description: '512×512' },
+] as const
+
 // 图片生成相关类型
 interface GeneratedImage {
   id: string
@@ -44,6 +77,8 @@ interface GeneratedImage {
   prompt: string
   createdAt: number
   model: string
+  modelName: string
+  size: string
 }
 
 type Mode = 'chat' | 'image'
@@ -60,6 +95,10 @@ export default function ChatPage() {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [selectedImageModel, setSelectedImageModel] = useState<ImageModelId>('seedream-5.0-lite')
+  const [selectedImageSize, setSelectedImageSize] = useState('1024x1024')
+  const [negativePrompt, setNegativePrompt] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   
   const {
     sessions,
@@ -273,15 +312,20 @@ export default function ChatPage() {
     setIsGenerating(true)
 
     try {
+      const requestBody: Record<string, string | number> = {
+        prompt,
+        model: selectedImageModel,
+        size: selectedImageSize,
+        n: 1,
+      }
+      if (negativePrompt.trim()) {
+        requestBody.negative_prompt = negativePrompt.trim()
+      }
+
       const response = await fetch('/api/ai/doubao/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          model: 'seedream-4.0',
-          size: '1024x1024',
-          n: 1,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
@@ -297,10 +341,12 @@ export default function ChatPage() {
         url: img.url,
         prompt,
         createdAt: Date.now(),
-        model: 'seedream-4.0',
+        model: selectedImageModel,
+        modelName: data.model?.name || IMAGE_MODELS.find(m => m.id === selectedImageModel)?.name || selectedImageModel,
+        size: selectedImageSize,
       }))
 
-      setGeneratedImages(prev => [newImages[0], ...prev])
+      setGeneratedImages(prev => [...newImages, ...prev])
     } catch (error) {
       console.error('Image generation error:', error)
       alert(error instanceof Error ? error.message : '生成图片失败，请重试')
@@ -308,6 +354,9 @@ export default function ChatPage() {
       setIsGenerating(false)
     }
   }
+
+  // 获取当前选中图片模型信息
+  const currentImageModel = IMAGE_MODELS.find(m => m.id === selectedImageModel) || IMAGE_MODELS[0]
 
   // 复制图片URL
   const copyImageUrl = async (url: string, id: string) => {
@@ -502,6 +551,17 @@ export default function ChatPage() {
                 <span className="hidden sm:inline">清空对话</span>
               </Button>
             )}
+            {mode === 'image' && generatedImages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setGeneratedImages([])}
+                className="gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">清空图片</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -509,68 +569,99 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {mode === 'image' ? (
             // 图片生成模式
-            generatedImages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
-                <p className="text-lg font-medium">AI 图片生成</p>
-                <p className="text-sm mt-2">输入描述，让 AI 为你创作精美图片</p>
-                <p className="text-xs mt-4 text-center max-w-md">
-                  支持生成高清图片，可下载或复制图片链接
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {generatedImages.map((image) => (
-                  <div
-                    key={image.id}
-                    className="group relative bg-muted/50 rounded-lg overflow-hidden border"
-                  >
-                    <Image
-                      src={image.url}
-                      alt={image.prompt}
-                      className="w-full aspect-square object-cover"
-                      width={512}
-                      height={512}
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <p className="text-white text-sm mb-2 line-clamp-2">{image.prompt}</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => copyImageUrl(image.url, image.id)}
-                            className="gap-1"
-                          >
-                            {copiedId === image.id ? (
-                              <>
-                                <Check className="w-4 h-4" />
-                                已复制
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-4 h-4" />
-                                复制
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => downloadImage(image.url, image.prompt)}
-                            className="gap-1"
-                          >
-                            <Download className="w-4 h-4" />
-                            下载
-                          </Button>
+            <>
+              {/* 生成中状态 */}
+              {isGenerating && (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <div className="relative">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                    <ImageIcon className="w-5 h-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium">正在生成图片...</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      使用 {currentImageModel.name} · {selectedImageSize}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {generatedImages.length === 0 && !isGenerating ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+                  <p className="text-lg font-medium">AI 图片生成</p>
+                  <p className="text-sm mt-2">输入描述，让 AI 为你创作精美图片</p>
+                  <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-md">
+                    {IMAGE_MODELS.map((m) => (
+                      <span key={m.id} className="text-xs px-2 py-1 bg-muted rounded-md">
+                        {m.icon} {m.name} - {m.description}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {generatedImages.map((image) => (
+                    <div
+                      key={image.id}
+                      className="group relative bg-muted/50 rounded-lg overflow-hidden border"
+                    >
+                      <Image
+                        src={image.url}
+                        alt={image.prompt}
+                        className="w-full aspect-square object-cover"
+                        width={512}
+                        height={512}
+                        unoptimized
+                      />
+                      {/* 模型标签 */}
+                      <div className="absolute top-2 left-2 flex gap-1">
+                        <span className="text-xs px-2 py-0.5 bg-black/60 text-white rounded-md backdrop-blur-sm">
+                          {image.modelName}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 bg-black/60 text-white rounded-md backdrop-blur-sm">
+                          {image.size}
+                        </span>
+                      </div>
+                      <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <p className="text-white text-sm mb-2 line-clamp-2">{image.prompt}</p>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => copyImageUrl(image.url, image.id)}
+                              className="gap-1"
+                            >
+                              {copiedId === image.id ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  已复制
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-4 h-4" />
+                                  复制
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => downloadImage(image.url, image.prompt)}
+                              className="gap-1"
+                            >
+                              <Download className="w-4 h-4" />
+                              下载
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             // 对话模式
             messages.length === 0 ? (
@@ -630,7 +721,7 @@ export default function ChatPage() {
         <div className="border-t p-4">
           {mode === 'chat' && (
             <>
-              {/* 模型选择器 */}
+              {/* 对话模型选择器 */}
               <div className="flex items-center gap-2 mb-3 max-w-4xl mx-auto">
                 <Sparkles className="w-4 h-4 text-muted-foreground" />
                 <Select
@@ -656,6 +747,89 @@ export default function ChatPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </>
+          )}
+
+          {mode === 'image' && (
+            <>
+              {/* 图片模型与尺寸选择器 */}
+              <div className="flex flex-wrap items-center gap-2 mb-3 max-w-4xl mx-auto">
+                <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Select
+                  value={selectedImageModel}
+                  onValueChange={(value) => setSelectedImageModel(value as ImageModelId)}
+                  disabled={isGenerating}
+                >
+                  <SelectTrigger className="h-8 text-sm w-auto min-w-[180px]">
+                    <SelectValue placeholder="选择模型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {IMAGE_MODELS.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{model.icon}</span>
+                          <span>{model.name}</span>
+                          <span className="text-muted-foreground text-xs">
+                            {model.description}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground text-xs">|</span>
+                <Select
+                  value={selectedImageSize}
+                  onValueChange={setSelectedImageSize}
+                  disabled={isGenerating}
+                >
+                  <SelectTrigger className="h-8 text-sm w-auto min-w-[140px]">
+                    <SelectValue placeholder="尺寸" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {IMAGE_SIZES.map((size) => (
+                      <SelectItem key={size.id} value={size.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{size.name}</span>
+                          <span className="text-muted-foreground text-xs">
+                            {size.description}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant={showAdvanced ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  <span className="text-xs">高级</span>
+                </Button>
+              </div>
+
+              {/* 高级选项 */}
+              {showAdvanced && (
+                <div className="mb-3 max-w-4xl mx-auto p-3 bg-muted/50 rounded-lg border space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Minus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <label className="text-xs text-muted-foreground shrink-0">负面提示词</label>
+                    <input
+                      type="text"
+                      value={negativePrompt}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                      placeholder="排除不想出现的元素（如：模糊、低质量）"
+                      className="flex-1 h-8 text-sm px-3 bg-background rounded-md border border-input"
+                      disabled={isGenerating}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground pl-5.5">
+                    负面提示词用于排除不希望出现在图片中的内容
+                  </p>
+                </div>
+              )}
             </>
           )}
           
@@ -699,7 +873,7 @@ export default function ChatPage() {
           <p className="text-xs text-muted-foreground mt-2 text-center">
             {mode === 'chat' 
               ? "按 Enter 发送消息，Shift+Enter 换行"
-              : "使用豆包 Seedream 4.0 模型生成高质量图片"
+              : `使用豆包 ${currentImageModel.name} 生成图片 · ${selectedImageSize}`
             }
           </p>
         </div>
