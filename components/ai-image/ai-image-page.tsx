@@ -25,7 +25,7 @@ export function AiImagePage() {
   }, [])
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-full overflow-hidden">
       {/* 左侧：会话列表 */}
       <div className="w-[280px] shrink-0">
         <ConversationList />

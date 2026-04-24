@@ -15,10 +15,10 @@ export default async function SidebarLayout({
     children: React.ReactNode
   }>) {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <SidebarInset className="min-w-0 overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator
             orientation="vertical"
@@ -30,7 +30,7 @@ export default async function SidebarLayout({
             <LogoutButton />
           </div>
         </header>
-        <main className="w-full px-4">{children}</main>
+        <main className="flex-1 overflow-auto px-4">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )
