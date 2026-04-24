@@ -4,7 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
-import { List, SquareActivity, Monitor, BarChart3, Film, Sparkle, Drama, Upload, FolderTree, Scissors, Languages, Clapperboard } from 'lucide-react'
+import { List, SquareActivity, Monitor, BarChart3, Film, Sparkle, Drama, Upload, FolderTree, Scissors, Languages, Clapperboard, ImageIcon } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -163,6 +163,19 @@ const allNavData: NavGroup[] = [
         title: "任务列表",
         url: "/remix/task",
         icon: Scissors,
+        isActive: false,
+        allowedRoles: ['admin', 'user'],
+      },
+    ],
+  },
+  {
+    title: "AI 生图",
+    url: "/ai-image",
+    items: [
+      {
+        title: "图片生成",
+        url: "/ai-image",
+        icon: ImageIcon,
         isActive: false,
         allowedRoles: ['admin', 'user'],
       },

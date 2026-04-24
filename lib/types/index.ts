@@ -32,3 +32,14 @@ export type {
   EditRemixTaskParams,
   PendingFile,
 } from "./material"
+export type {
+  SeedreamModel,
+  ModelOption,
+  MessageRole,
+  GenerateParams,
+  ImageData,
+  ChatMessage,
+  Conversation,
+  ApiConfig,
+  AiImageState,
+} from "./ai-image"

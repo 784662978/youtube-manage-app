@@ -31,6 +31,8 @@ export const PERMISSION_CONFIG: Record<UserRole, PermissionConfig> = {
       '/material/library',
       '/remix/task/',
       '/remix/task',
+      '/ai-image/',
+      '/ai-image',
     ],
     hiddenComponents: [
       'schedule-summary', // 排期概况区域
